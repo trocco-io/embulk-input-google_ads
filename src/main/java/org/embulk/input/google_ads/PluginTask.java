@@ -9,36 +9,35 @@ import java.util.List;
 import java.util.Optional;
 
 public interface PluginTask
-        extends Task
-{
+        extends Task {
     @Config("customer_id")
-    public String getCustomerId();
+    String getCustomerId();
 
     @Config("login_customer_id")
     @ConfigDefault("null")
-    public Optional<String> getLoginCustomerId();
+    Optional<String> getLoginCustomerId();
 
     @Config("client_id")
-    public String getClientId();
+    String getClientId();
 
     @Config("client_secret")
-    public String getClientSecret();
+    String getClientSecret();
 
     @Config("refresh_token")
-    public String getRefreshToken();
+    String getRefreshToken();
 
     @Config("developer_token")
-    public String getDeveloperToken();
+    String getDeveloperToken();
 
     @Config("resource_type")
-    public String getResourceType();
+    String getResourceType();
 
     @Config("fields")
-    public SchemaConfig getFields();
+    SchemaConfig getFields();
 
     @Config("conditions")
     @ConfigDefault("[]")
-    public List<String> getConditions();
+    List<String> getConditions();
 
     // @Config("daterange")
     // @ConfigDefault("null")
@@ -46,10 +45,10 @@ public interface PluginTask
 
     @Config("_replace_dot_in_column")
     @ConfigDefault("false")
-    public boolean getReplaceDotInColumn();
+    boolean getReplaceDotInColumn();
 
     @Config("_replace_dot_in_column_with")
     @ConfigDefault("\"_\"")
-    public String getReplaceDotInColumnWith();
+    String getReplaceDotInColumnWith();
 
 }
