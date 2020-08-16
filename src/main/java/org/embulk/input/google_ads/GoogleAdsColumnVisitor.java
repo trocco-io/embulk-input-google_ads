@@ -89,7 +89,7 @@ public class GoogleAdsColumnVisitor implements ColumnVisitor {
     @Override
     public void jsonColumn(Column column) {
         try {
-            JsonElement data = new com.google.gson.JsonParser().parse(accessor.get(column.getName()));
+            JsonElement data = com.google.gson.JsonParser.parseString(accessor.get(column.getName()));
             if (data.isJsonNull() || data.isJsonPrimitive()) {
                 pageBuilder.setNull(column);
             } else {
