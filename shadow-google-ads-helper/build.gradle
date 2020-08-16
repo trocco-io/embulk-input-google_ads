@@ -42,6 +42,7 @@ dependencies {
 
 // Relocate Guava and Jackson packages since they are incompatible from Embulk's.
 shadowJar {
+    mergeServiceFiles()
     relocate "com.google.common", "embulk.google-ads.com.google.common"
     relocate "com.google.thirdparty.publicsuffix", "embulk.google-ads.com.google.thirdparty.publicsuffix"
     relocate "com.fasterxml.jackson", "embulk.google-ads.com.fasterxml.jackson"

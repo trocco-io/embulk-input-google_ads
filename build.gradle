@@ -28,7 +28,7 @@ dependencies {
 }
 
 embulkPlugin {
-    mainClass = "org.embulk.output.google_ads.BigqueryJavaOutputPlugin"
+    mainClass = "org.embulk.input.google_ads.GoogleAdsInputPlugin"
     category = "input"
     type = "google_ads"
 }
