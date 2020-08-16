@@ -1,54 +1,28 @@
 package org.embulk.input.google_ads;
 
 import java.util.List;
+import java.util.Map;
 
-import com.google.common.base.Optional;
-
-import org.embulk.config.Config;
-import org.embulk.config.ConfigDefault;
+import com.google.api.gax.grpc.GrpcHeaderInterceptor;
+import com.google.common.collect.ImmutableList;
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigSource;
-import org.embulk.config.Task;
 import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
-import org.embulk.spi.Exec;
-import org.embulk.spi.InputPlugin;
-import org.embulk.spi.PageOutput;
-import org.embulk.spi.Schema;
-import org.embulk.spi.SchemaConfig;
+import org.embulk.spi.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class GoogleAdsInputPlugin
-        implements InputPlugin
-{
-    public interface PluginTask
-            extends Task
-    {
-        // configuration option 1 (required integer)
-        @Config("option1")
-        public int getOption1();
-
-        // configuration option 2 (optional string, null is not allowed)
-        @Config("option2")
-        @ConfigDefault("\"myvalue\"")
-        public String getOption2();
-
-        // configuration option 3 (optional string, null is allowed)
-        @Config("option3")
-        @ConfigDefault("null")
-        public Optional<String> getOption3();
-
-        // if you get schema from config
-        @Config("columns")
-        public SchemaConfig getColumns();
-    }
+        implements InputPlugin {
+    private final Logger logger = LoggerFactory.getLogger(GoogleAdsInputPlugin.class);
 
     @Override
     public ConfigDiff transaction(ConfigSource config,
-            InputPlugin.Control control)
-    {
+                                  InputPlugin.Control control) {
         PluginTask task = config.loadConfig(PluginTask.class);
+        Schema schema = buildSchema(task);
 
-        Schema schema = task.getColumns().toSchema();
         int taskCount = 1;  // number of run() method calls
 
         return resume(task.dump(), schema, taskCount, control);
@@ -56,34 +30,63 @@ public class GoogleAdsInputPlugin
 
     @Override
     public ConfigDiff resume(TaskSource taskSource,
-            Schema schema, int taskCount,
-            InputPlugin.Control control)
-    {
+                             Schema schema, int taskCount,
+                             InputPlugin.Control control) {
         control.run(taskSource, schema, taskCount);
         return Exec.newConfigDiff();
     }
 
     @Override
     public void cleanup(TaskSource taskSource,
-            Schema schema, int taskCount,
-            List<TaskReport> successTaskReports)
-    {
+                        Schema schema, int taskCount,
+                        List<TaskReport> successTaskReports) {
     }
 
     @Override
     public TaskReport run(TaskSource taskSource,
-            Schema schema, int taskIndex,
-            PageOutput output)
-    {
+                          Schema schema, int taskIndex,
+                          PageOutput output) {
         PluginTask task = taskSource.loadTask(PluginTask.class);
 
-        // Write your code here :)
-        throw new UnsupportedOperationException("GoogleAdsInputPlugin.run method is not implemented yet");
+        GoogleAdsReporter reporter = new GoogleAdsReporter(task);
+        reporter.connect();
+        try {
+            try (PageBuilder pageBuilder = getPageBuilder(schema, output)) {
+                for (Map<String, String> row : reporter.getReport()) {
+                    schema.visitColumns(new GoogleAdsColumnVisitor(new GoogleAdsAccessor(task, row), pageBuilder, task));
+                    pageBuilder.addRecord();
+                }
+                pageBuilder.finish();
+            }
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+            throw e;
+        }
+
+        return Exec.newTaskReport();
     }
 
     @Override
-    public ConfigDiff guess(ConfigSource config)
-    {
+    public ConfigDiff guess(ConfigSource config) {
         return Exec.newConfigDiff();
     }
+
+    public GoogleAdsReporter getClient(PluginTask task) {
+        return new GoogleAdsReporter(task);
+    }
+
+    public Schema buildSchema(PluginTask task) {
+        ImmutableList.Builder<Column> builder = ImmutableList.builder();
+        for (int i = 0; i < task.getFields().size(); i++) {
+            ColumnConfig columnConfig = task.getFields().getColumn(i);
+            ColumnConfig escapedColumnConfig = new ColumnConfig(GoogleAdsUtil.escapeColumnName(columnConfig.getName(), task), columnConfig.getType(), columnConfig.getOption());
+            builder.add(escapedColumnConfig.toColumn(i));
+        }
+        return new Schema(builder.build());
+    }
+
+    protected PageBuilder getPageBuilder(final Schema schema, final PageOutput output) {
+        return new PageBuilder(Exec.getBufferAllocator(), schema, output);
+    }
+
 }

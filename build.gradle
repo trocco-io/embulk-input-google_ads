@@ -3,6 +3,7 @@ plugins {
     id "com.github.jruby-gradle.base" version "1.5.0"
     id "java"
     id "checkstyle"
+    id "com.github.johnrengelman.shadow" version "4.0.3"
 }
 import com.github.jrubygradle.JRubyExec
 repositories {
@@ -11,6 +12,7 @@ repositories {
 }
 configurations {
     provided
+
 }
 
 version = "0.1.0"
@@ -18,16 +20,33 @@ version = "0.1.0"
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
+// Relocate Guava packages since it's incompatible with Guava's version from Embulk
+shadowJar {
+    classifier = "shadow"
+    exclude "org/embulk/plugin/**"
+
+    dependencies {
+        include dependency("com.google.api-ads:google-ads")
+        include dependency("com.google.guava:guava")
+    }
+
+    relocate "com.google.common", "embulk.google-ads.com.google.common"
+}
+
 dependencies {
     compile  "org.embulk:embulk-core:0.9.23"
     provided "org.embulk:embulk-core:0.9.23"
     // compile "YOUR_JAR_DEPENDENCY_GROUP:YOUR_JAR_DEPENDENCY_MODULE:YOUR_JAR_DEPENDENCY_VERSION"
+    compile group: 'com.google.api-ads', name: 'google-ads', version: '8.0.0'
     testCompile "junit:junit:4.+"
 }
 
-task classpath(type: Copy, dependsOn: ["jar"]) {
+task classpath(type: Copy, dependsOn: ["jar", "shadowJar"]) {
     doFirst { file("classpath").deleteDir() }
-    from (configurations.runtime - configurations.provided + files(jar.archivePath))
+    from (configurations.runtime - configurations.provided
+            + configurations.shadow
+            - files(shadowJar.getIncludedDependencies())
+            + files(shadowJar.archivePath))
     into "classpath"
 }
 clean { delete "classpath" }
