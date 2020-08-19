@@ -1,55 +1,51 @@
 plugins {
-    id "com.jfrog.bintray" version "1.1"
-    id "com.github.jruby-gradle.base" version "1.5.0"
     id "java"
     id "checkstyle"
-    id "com.github.johnrengelman.shadow" version "4.0.3"
+    id "maven-publish"
+    id "com.github.johnrengelman.shadow" version "5.2.0" apply false
+    id "org.embulk.embulk-plugins" version "0.4.2"
 }
-import com.github.jrubygradle.JRubyExec
 repositories {
     mavenCentral()
     jcenter()
 }
-configurations {
-    provided
 
-}
-
+group="io.trocco"
 version = "0.1.0"
-
+description = "embulk input plugin for Google Ads"
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
-// Relocate Guava packages since it's incompatible with Guava's version from Embulk
-shadowJar {
-    classifier = "shadow"
-    exclude "org/embulk/plugin/**"
-
-    dependencies {
-        include dependency("com.google.api-ads:google-ads")
-        include dependency("com.google.guava:guava")
-    }
-
-    relocate "com.google.common", "embulk.google-ads.com.google.common"
+tasks.withType(JavaCompile) {
+    options.compilerArgs << "-Xlint:deprecation" << "-Xlint:unchecked"
 }
 
 dependencies {
-    compile  "org.embulk:embulk-core:0.9.23"
-    provided "org.embulk:embulk-core:0.9.23"
+    compileOnly "org.embulk:embulk-core:0.9.23"
     // compile "YOUR_JAR_DEPENDENCY_GROUP:YOUR_JAR_DEPENDENCY_MODULE:YOUR_JAR_DEPENDENCY_VERSION"
-    compile group: 'com.google.api-ads', name: 'google-ads', version: '8.0.0'
-    testCompile "junit:junit:4.+"
+    compile project(path: ":shadow-google-ads-helper", configuration: "shadow")
+    testCompile "junit:junit:4.13"
 }
 
-task classpath(type: Copy, dependsOn: ["jar", "shadowJar"]) {
-    doFirst { file("classpath").deleteDir() }
-    from (configurations.runtime - configurations.provided
-            + configurations.shadow
-            - files(shadowJar.getIncludedDependencies())
-            + files(shadowJar.archivePath))
-    into "classpath"
+embulkPlugin {
+    mainClass = "org.embulk.input.google_ads.GoogleAdsInputPlugin"
+    category = "input"
+    type = "google_ads"
 }
-clean { delete "classpath" }
+
+publishing {
+    publications {
+        embulkPluginMaven(MavenPublication) {  // Publish it with "publishEmbulkPluginMavenPublicationToMavenRepository".
+            from components.java  // Must be "components.java". The dependency modification works only for it.
+        }
+    }
+    repositories {
+        maven {
+            url = "${project.buildDir}/mavenPublishLocal"
+        }
+    }
+}
+
 
 checkstyle {
     configFile = file("${project.rootDir}/config/checkstyle/checkstyle.xml")
@@ -68,50 +64,16 @@ task checkstyle(type: Checkstyle) {
     source = sourceSets.main.allJava + sourceSets.test.allJava
 }
 
-task gem(type: JRubyExec, dependsOn: ["gemspec", "classpath"]) {
-    jrubyArgs "-S"
-    script "gem"
-    scriptArgs "build", "${project.name}.gemspec"
-    doLast { ant.move(file: "${project.name}-${project.version}.gem", todir: "pkg") }
+gem {
+    from("LICENSE")  // Optional -- if you need other files in the gem.
+    authors = [ "giwa" ]
+    email = [ "ugw.gi.world@gmail.com" ]
+    // "description" of the gem is copied from "description" of your Gradle project.
+    summary = "Google Ads input plugin for Embulk"
+    homepage = "https://github.com/trocco-io/embulk-output-bigquery_java"
+    licenses = [ "Apache-2.0" ]
 }
 
-task gemPush(type: JRubyExec, dependsOn: ["gem"]) {
-    jrubyArgs "-S"
-    script "gem"
-    scriptArgs "push", "pkg/${project.name}-${project.version}.gem"
+gemPush {
+    host = "https://rubygems.org"
 }
-
-task "package"(dependsOn: ["gemspec", "classpath"]) {
-    doLast {
-        println "> Build succeeded."
-        println "> You can run embulk with '-L ${file(".").absolutePath}' argument."
-    }
-}
-
-task gemspec {
-    ext.gemspecFile = file("${project.name}.gemspec")
-    inputs.file "build.gradle"
-    outputs.file gemspecFile
-    doLast { gemspecFile.write($/
-Gem::Specification.new do |spec|
-  spec.name          = "${project.name}"
-  spec.version       = "${project.version}"
-  spec.authors       = ["giwa"]
-  spec.summary       = %[Google Ads input plugin for Embulk]
-  spec.description   = %[Loads records from Google Ads.]
-  spec.email         = ["ugw.gi.world@gmail.com"]
-  spec.licenses      = ["MIT"]
-  # TODO set this: spec.homepage      = "https://github.com/ugw.gi.world/embulk-input-google_ads"
-
-  spec.files         = `git ls-files`.split("\n") + Dir["classpath/*.jar"]
-  spec.test_files    = spec.files.grep(%r"^(test|spec)/")
-  spec.require_paths = ["lib"]
-
-  #spec.add_dependency 'YOUR_GEM_DEPENDENCY', ['~> YOUR_GEM_DEPENDENCY_VERSION']
-  spec.add_development_dependency 'bundler', ['~> 1.0']
-  spec.add_development_dependency 'rake', ['~> 12.0']
-end
-/$)
-    }
-}
-clean { delete "${project.name}.gemspec" }

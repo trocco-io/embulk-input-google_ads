@@ -17,40 +17,40 @@ public class GoogleAdsColumnVisitor implements ColumnVisitor {
     private final GoogleAdsAccessor accessor;
     private final String DEFAULT_TIMESTAMP_PATTERN = "%Y-%m-%dT%H:%M:%S%z";
 
-    public GoogleAdsColumnVisitor(final GoogleAdsAccessor accessor, final PageBuilder pageBuilder, final PluginTask task){
+    public GoogleAdsColumnVisitor(final GoogleAdsAccessor accessor, final PageBuilder pageBuilder, final PluginTask task) {
         this.accessor = accessor;
         this.pageBuilder = pageBuilder;
         this.task = task;
     }
 
     @Override
-    public void stringColumn(Column column){
+    public void stringColumn(Column column) {
         String data = accessor.get(column.getName());
-        if (data == null){
+        if (data == null) {
             pageBuilder.setNull(column);
-        }else{
+        } else {
             pageBuilder.setString(column, data);
         }
     }
 
     @Override
-    public void longColumn(Column column){
+    public void longColumn(Column column) {
         String data = accessor.get(column.getName());
-        if (data == null){
+        if (data == null) {
             pageBuilder.setNull(column);
-        }else{
+        } else {
             pageBuilder.setString(column, data);
         }
     }
 
     @Override
     public void booleanColumn(Column column) {
-            String data = accessor.get(column.getName());
-            if (data == null){
-                pageBuilder.setNull(column);
-            }else{
-                pageBuilder.setBoolean(column, Boolean.parseBoolean(data));
-            }
+        String data = accessor.get(column.getName());
+        if (data == null) {
+            pageBuilder.setNull(column);
+        } else {
+            pageBuilder.setBoolean(column, Boolean.parseBoolean(data));
+        }
     }
 
     @Override
@@ -89,7 +89,7 @@ public class GoogleAdsColumnVisitor implements ColumnVisitor {
     @Override
     public void jsonColumn(Column column) {
         try {
-            JsonElement data = new com.google.gson.JsonParser().parse(accessor.get(column.getName()));
+            JsonElement data = com.google.gson.JsonParser.parseString(accessor.get(column.getName()));
             if (data.isJsonNull() || data.isJsonPrimitive()) {
                 pageBuilder.setNull(column);
             } else {
