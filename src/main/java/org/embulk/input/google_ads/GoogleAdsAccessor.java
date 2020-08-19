@@ -12,6 +12,15 @@ public class GoogleAdsAccessor {
     }
 
     public String get(String name) {
-        return row.get(GoogleAdsUtil.escapeColumnName(name, task));
+        if (!task.getReplaceDotInColumn()) {
+            return row.get(name);
+        }
+
+        for (Map.Entry<String, String> entry : row.entrySet()) {
+            if (name.equals(GoogleAdsUtil.escapeColumnName(entry.getKey(), task))) {
+                return entry.getValue();
+            }
+        }
+        return null;
     }
 }

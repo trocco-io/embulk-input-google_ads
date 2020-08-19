@@ -36,12 +36,12 @@ public interface PluginTask
     SchemaConfig getFields();
 
     @Config("conditions")
-    @ConfigDefault("[]")
-    List<String> getConditions();
+    @ConfigDefault("null")
+    Optional<List<String>> getConditions();
 
-    // @Config("daterange")
-    // @ConfigDefault("null")
-    // public Optional<GoogleAdsDateRange> getDateRange();
+    @Config("daterange")
+    @ConfigDefault("null")
+    Optional<GoogleAdsDateRange> getDateRange();
 
     @Config("_replace_dot_in_column")
     @ConfigDefault("false")

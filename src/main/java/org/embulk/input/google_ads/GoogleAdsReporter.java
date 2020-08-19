@@ -14,7 +14,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import org.msgpack.core.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +52,6 @@ public class GoogleAdsReporter {
 
         Map<String, String> result;
         for (GoogleAdsRow row : response.iterateAll()) {
-            System.out.println(row);
             result = new HashMap<String, String>() {
             };
             flattenResource(null, row.getAllFields(), result);
@@ -125,33 +126,42 @@ public class GoogleAdsReporter {
     public String buildQuery(PluginTask task) {
         StringBuilder sb = new StringBuilder();
 
-        String dateCondition = null;
-        // if (task.getDateRange().isPresent()){
-        //     StringBuilder dateSb = new StringBuilder();
-        //     dateSb.append(" segments.date BETWEEN ");
-        //     dateSb.append(task.getDateRange().get().getMin());
-        //     dateSb.append(" AND ");
-        //     dateSb.append(task.getDateRange().get().getMax());
-        //     dateCondition = dateSb.toString();
-        // }
-
         sb.append("SELECT ");
         String columns = task.getFields().getColumns().stream().map(ColumnConfig::getName).collect(Collectors.joining(", "));
-        List<String> conditionList = task.getConditions();
-        if (dateCondition != null) {
-            conditionList.add(dateCondition);
-        }
-        String conditions = String.join(" AND ", conditionList);
         sb.append(columns);
         sb.append(" FROM ");
         sb.append(task.getResourceType());
 
-        if (!conditions.isEmpty()) {
+        List<String> whereClause = buildWhereClauseConditions(task);
+        if (!whereClause.isEmpty()) {
             sb.append(" WHERE ");
-            sb.append(conditions);
+            sb.append(String.join(" AND ", whereClause));
         }
 
         return sb.toString();
+    }
+
+    @VisibleForTesting
+    public List<String> buildWhereClauseConditions(PluginTask task) {
+        List<String> whereConditions = new ArrayList<String>() {
+        };
+
+        if (task.getDateRange().isPresent()) {
+            StringBuilder dateSb = new StringBuilder();
+            dateSb.append("segments.date BETWEEN '");
+            dateSb.append(task.getDateRange().get().getMin());
+            dateSb.append("' AND '");
+            dateSb.append(task.getDateRange().get().getMax());
+            dateSb.append("'");
+            whereConditions.add(dateSb.toString());
+        }
+
+        if (task.getConditions().isPresent()) {
+            List<String> conditionList = task.getConditions().get();
+            return Stream.concat(conditionList.stream(), whereConditions.stream()).collect(Collectors.toList());
+        } else {
+            return whereConditions;
+        }
     }
 
     public void connect() {
