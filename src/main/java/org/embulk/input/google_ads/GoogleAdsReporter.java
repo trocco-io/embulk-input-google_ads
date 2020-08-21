@@ -149,9 +149,9 @@ public class GoogleAdsReporter {
         if (task.getDateRange().isPresent()) {
             StringBuilder dateSb = new StringBuilder();
             dateSb.append("segments.date BETWEEN '");
-            dateSb.append(task.getDateRange().get().getMin());
+            dateSb.append(task.getDateRange().get().getStartDate());
             dateSb.append("' AND '");
-            dateSb.append(task.getDateRange().get().getMax());
+            dateSb.append(task.getDateRange().get().getEndDate());
             dateSb.append("'");
             whereConditions.add(dateSb.toString());
         }
