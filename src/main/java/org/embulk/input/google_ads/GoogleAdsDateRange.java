@@ -4,22 +4,20 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class GoogleAdsDateRange {
-    private final String min;
-    private final String max;
+    private final String startDate;
+    private final String endDate;
 
     @JsonCreator
-    public GoogleAdsDateRange(@JsonProperty("min") String min, @JsonProperty("max") String max) {
-        this.min = min;
-        this.max = max;
+    public GoogleAdsDateRange(@JsonProperty("start_date") String startDate, @JsonProperty("end_date") String endDate) {
+        this.startDate = startDate;
+        this.endDate = endDate;
     }
 
-    public String getMin() {
-        return min;
+    public String getStartDate() {
+        return startDate;
     }
 
-    public String getMax() {
-        return max;
+    public String getEndDate() {
+        return endDate;
     }
-
-
 }
