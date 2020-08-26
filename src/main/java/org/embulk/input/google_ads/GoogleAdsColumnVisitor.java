@@ -69,7 +69,8 @@ public class GoogleAdsColumnVisitor implements ColumnVisitor {
             List<ColumnConfig> columnConfigs = task.getFields().getColumns();
             String pattern = DEFAULT_TIMESTAMP_PATTERN;
             for (ColumnConfig config : columnConfigs) {
-                if (config.getName().equals(column.getName())
+                String configColumnName = GoogleAdsUtil.escapeColumnName(config.getName(), task);
+                if (configColumnName.equals(column.getName())
                         && config.getConfigSource() != null
                         && config.getConfigSource().getObjectNode() != null
                         && config.getConfigSource().getObjectNode().get("format") != null
