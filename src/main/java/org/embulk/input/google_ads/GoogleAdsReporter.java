@@ -1,9 +1,9 @@
 package org.embulk.input.google_ads;
 
 import com.google.ads.googleads.lib.GoogleAdsClient;
-import com.google.ads.googleads.v4.services.GoogleAdsRow;
-import com.google.ads.googleads.v4.services.GoogleAdsServiceClient;
-import com.google.ads.googleads.v4.services.SearchGoogleAdsRequest;
+import com.google.ads.googleads.v5.services.GoogleAdsRow;
+import com.google.ads.googleads.v5.services.GoogleAdsServiceClient;
+import com.google.ads.googleads.v5.services.SearchGoogleAdsRequest;
 import com.google.auth.oauth2.UserCredentials;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.GeneratedMessageV3;
@@ -47,7 +47,7 @@ public class GoogleAdsReporter {
         String query = buildQuery(task);
         logger.info(query);
         SearchGoogleAdsRequest request = buildRequest(task, query);
-        GoogleAdsServiceClient googleAdsService = client.getVersion4().createGoogleAdsServiceClient();
+        GoogleAdsServiceClient googleAdsService = client.getVersion5().createGoogleAdsServiceClient();
         GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
 
         Map<String, String> result;
