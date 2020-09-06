@@ -60,31 +60,10 @@ public class GoogleAdsReporter {
         return reports;
     }
 
-    // Flatten nested resource by DFS extraction.
-    //  SELECT ad_group_ad.ad.responsive_search_ad.headlines,
-    //         ad_group_ad.ad.id
-    //  FROM ad_group_ad
-    // The above query return following response. Extract key (e.g. ad_group_ad.ad.id) from path and create key-value pair
-    // ad_group_ad.ad.id: 372604507189
-    // resource_name is skipped.
-    //
-    // ad_group_ad {
-    //  resource_name: "customers/6797712831/adGroupAds/99561175646~372604507189"
-    //  ad {
-    //    id {
-    //      value: 372604507189
-    //    }
-    //    responsive_search_ad {
-    //      headlines {
-    //        text {
-    //          value: "\344\273\212\343\201\231\343\201\220\350\263\207\346\226\231\350\253\213\346\261\202"
-    //        }
-    //        pinned_field: HEADLINE_2
-    //      }
     public void flattenResource(String resourceName, Map<Descriptors.FieldDescriptor, Object> fields, Map<String, String> result) {
         for (Descriptors.FieldDescriptor key : fields.keySet()) {
             // skip resource_name
-            if (key.getType() == Descriptors.FieldDescriptor.Type.STRING && !key.getName().equals("value")) {
+            if (key.getName().equals("resource_name")) {
                 continue;
             }
 
@@ -99,18 +78,15 @@ public class GoogleAdsReporter {
                     } else {
                         nestedResource = String.format("%s.%s", resourceName, key.getName());
                     }
+
                     flattenResource(nestedResource, message.getAllFields(), result);
                 }
             }
-
-            // ENUM is not protobuf Value
-            if (key.getType() == Descriptors.FieldDescriptor.Type.ENUM) {
+            if (key.getName().equals("value")) {
+                result.put(resourceName, String.valueOf(fields.get(key)));
+            }else if (key.getType() != Descriptors.FieldDescriptor.Type.MESSAGE) {
                 String attributeName = String.format("%s.%s", resourceName, key.getName());
                 result.put(attributeName, String.valueOf(fields.get(key)));
-            }
-
-            if (key.getName().equals("value")) {
-                result.put(resourceName, fields.get(key).toString());
             }
         }
     }
