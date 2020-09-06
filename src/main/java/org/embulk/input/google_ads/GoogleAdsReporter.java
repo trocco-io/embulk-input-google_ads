@@ -82,8 +82,9 @@ public class GoogleAdsReporter {
                     flattenResource(nestedResource, message.getAllFields(), result);
                 }
             }
-
-            if (key.getType() != Descriptors.FieldDescriptor.Type.MESSAGE) {
+            if (key.getName().equals("value")) {
+                result.put(resourceName, String.valueOf(fields.get(key)));
+            }else if (key.getType() != Descriptors.FieldDescriptor.Type.MESSAGE) {
                 String attributeName = String.format("%s.%s", resourceName, key.getName());
                 result.put(attributeName, String.valueOf(fields.get(key)));
             }
