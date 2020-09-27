@@ -12,13 +12,13 @@ public class GoogleAdsAccessor {
     }
 
     public String get(String name) {
-        if (!task.getReplaceDotInColumn()) {
-            return row.get(name);
-        }
-
         for (Map.Entry<String, String> entry : row.entrySet()) {
             if (name.equals(GoogleAdsUtil.escapeColumnName(entry.getKey(), task))) {
-                return entry.getValue();
+                if (GoogleAdsValueConverter.shouldApplyMicro(entry.getKey()) && task.getUseMicro()){
+                    return GoogleAdsValueConverter.applyMicro(entry.getValue());
+                }else{
+                    return entry.getValue();
+                }
             }
         }
         return null;
