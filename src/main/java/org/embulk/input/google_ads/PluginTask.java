@@ -44,7 +44,7 @@ public interface PluginTask
     Optional<GoogleAdsDateRange> getDateRange();
 
     @Config("_use_micro")
-    @ConfigDefault("false")
+    @ConfigDefault("true")
     boolean getUseMicro();
 
     @Config("_replace_dot_in_column")
