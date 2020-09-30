@@ -14,7 +14,7 @@ public class GoogleAdsAccessor {
     public String get(String name) {
         for (Map.Entry<String, String> entry : row.entrySet()) {
             if (name.equals(GoogleAdsUtil.escapeColumnName(entry.getKey(), task))) {
-                if (GoogleAdsValueConverter.shouldApplyMicro(entry.getKey()) && task.getUseMicro()){
+                if (GoogleAdsValueConverter.shouldApplyMicro(entry.getKey()) && !task.getUseMicro()){
                     return GoogleAdsValueConverter.applyMicro(entry.getValue());
                 }else{
                     return entry.getValue();
