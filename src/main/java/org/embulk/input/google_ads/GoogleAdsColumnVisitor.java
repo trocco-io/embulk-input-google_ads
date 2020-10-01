@@ -39,7 +39,7 @@ public class GoogleAdsColumnVisitor implements ColumnVisitor {
         if (data == null) {
             pageBuilder.setNull(column);
         } else {
-            pageBuilder.setString(column, data);
+            pageBuilder.setLong(column, Long.parseLong(data));
         }
     }
 
