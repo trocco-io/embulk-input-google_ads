@@ -62,11 +62,6 @@ public class GoogleAdsReporter {
 
     public void flattenResource(String resourceName, Map<Descriptors.FieldDescriptor, Object> fields, Map<String, String> result) {
         for (Descriptors.FieldDescriptor key : fields.keySet()) {
-            // skip resource_name
-            if (key.getName().equals("resource_name")) {
-                continue;
-            }
-
             if (key.getType() == Descriptors.FieldDescriptor.Type.MESSAGE) {
                 if (key.isRepeated()) {
                     // TODO: support repeated field
