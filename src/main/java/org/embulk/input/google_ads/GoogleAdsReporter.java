@@ -59,7 +59,6 @@ public class GoogleAdsReporter {
         Map<String, String> result;
         for (GoogleAdsRow row : response.iterateAll()) {
             result = new HashMap<String, String>() {};
-            System.out.println(row);
             flattenResource(null, row.getAllFields(), result);
             reports.add(result);
         }
@@ -76,7 +75,6 @@ public class GoogleAdsReporter {
             }
 
             if (isLeaf(attributeName)){
-                System.out.println("Leaf");
                 result.put(attributeName, convertLeafNodeValue(fields, key));
             }else{
                 if (!key.getName().equals("resource_name")){
