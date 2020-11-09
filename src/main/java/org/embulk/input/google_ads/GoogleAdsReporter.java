@@ -1,5 +1,8 @@
 package org.embulk.input.google_ads;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.ads.googleads.lib.GoogleAdsClient;
 import com.google.ads.googleads.v5.services.GoogleAdsRow;
 import com.google.ads.googleads.v5.services.GoogleAdsServiceClient;
@@ -29,6 +32,7 @@ public class GoogleAdsReporter {
     private final PluginTask task;
     private final UserCredentials credentials;
     private GoogleAdsClient client;
+    private ObjectMapper mapper = new ObjectMapper();
 
     public GoogleAdsReporter(PluginTask task) {
         this.task = task;
@@ -55,6 +59,7 @@ public class GoogleAdsReporter {
         Map<String, String> result;
         for (GoogleAdsRow row : response.iterateAll()) {
             result = new HashMap<String, String>() {};
+            System.out.println(row);
             flattenResource(null, row.getAllFields(), result);
             reports.add(result);
         }
@@ -71,32 +76,49 @@ public class GoogleAdsReporter {
             }
 
             if (isLeaf(attributeName)){
+                System.out.println("Leaf");
                 result.put(attributeName, convertLeafNodeValue(fields, key));
             }else{
-                GeneratedMessageV3 message = (GeneratedMessageV3) fields.get(key);
-                flattenResource(attributeName, message.getAllFields(), result);
+                if (!key.getName().equals("resource_name")){
+                    GeneratedMessageV3 message = (GeneratedMessageV3) fields.get(key);
+                    flattenResource(attributeName, message.getAllFields(), result);
+                }
             }
         }
     }
 
     public String convertLeafNodeValue(Map<Descriptors.FieldDescriptor, Object> fields, Descriptors.FieldDescriptor key){
-        if (key.getType() != Descriptors.FieldDescriptor.Type.MESSAGE) {
-            return String.valueOf(fields.get(key));
-        }
-
-        if (key.isRepeated()) {
-            List<String> values = new ArrayList<>();
-            List<GeneratedMessageV3> field = (List<GeneratedMessageV3>) fields.get(key);
-            for (GeneratedMessageV3 msg : field) {
+        if (key.getType() != Descriptors.FieldDescriptor.Type.MESSAGE){
+            if (key.isRepeated()){
+                List<String> values = (List<String>) fields.get(key);
+                ArrayNode arrayNode = mapper.createArrayNode();
+                for (String val: values){
+                    arrayNode.add(val);
+                }
                 try{
-                    values.add(JsonFormat.printer().print(msg));
+                    return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(arrayNode);
+                }catch (JsonProcessingException ignored){
+                    return null;
+                }
+            }else{
+                return String.valueOf(fields.get(key));
+            }
+        }else{
+            // TODO: refactor later
+            if (key.isRepeated()) {
+                List<String> values = new ArrayList<>();
+                List<GeneratedMessageV3> field = (List<GeneratedMessageV3>) fields.get(key);
+                for (GeneratedMessageV3 msg : field) {
+                    try{
+                        values.add(JsonFormat.printer().print(msg));
+                    }catch (InvalidProtocolBufferException ignored){}
+                }
+                return "[" + String.join(",", values) + "]";
+            }else{
+                try{
+                    return JsonFormat.printer().print((GeneratedMessageV3) fields.get(key));
                 }catch (InvalidProtocolBufferException ignored){}
             }
-            return "[" + String.join(",", values) + "]";
-        }else{
-            try{
-                return JsonFormat.printer().print((GeneratedMessageV3) fields.get(key));
-            }catch (InvalidProtocolBufferException ignored){}
         }
         return null;
     }
