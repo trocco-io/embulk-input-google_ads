@@ -7,6 +7,8 @@ import com.google.ads.googleads.v5.services.SearchGoogleAdsRequest;
 import com.google.auth.oauth2.UserCredentials;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.GeneratedMessageV3;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.util.JsonFormat;
 import org.embulk.spi.ColumnConfig;
 
 import java.util.ArrayList;
@@ -52,8 +54,7 @@ public class GoogleAdsReporter {
 
         Map<String, String> result;
         for (GoogleAdsRow row : response.iterateAll()) {
-            result = new HashMap<String, String>() {
-            };
+            result = new HashMap<String, String>() {};
             flattenResource(null, row.getAllFields(), result);
             reports.add(result);
         }
@@ -62,28 +63,51 @@ public class GoogleAdsReporter {
 
     public void flattenResource(String resourceName, Map<Descriptors.FieldDescriptor, Object> fields, Map<String, String> result) {
         for (Descriptors.FieldDescriptor key : fields.keySet()) {
-            if (key.getType() == Descriptors.FieldDescriptor.Type.MESSAGE) {
-                if (key.isRepeated()) {
-                    // TODO: support repeated field
-                } else {
-                    GeneratedMessageV3 message = (GeneratedMessageV3) fields.get(key);
-                    String nestedResource;
-                    if (resourceName == null) {
-                        nestedResource = key.getName();
-                    } else {
-                        nestedResource = String.format("%s.%s", resourceName, key.getName());
-                    }
-
-                    flattenResource(nestedResource, message.getAllFields(), result);
-                }
+            String attributeName;
+            if (resourceName == null){
+                attributeName = key.getName();
+            }else{
+                attributeName = String.format("%s.%s", resourceName, key.getName());
             }
-            if (key.getName().equals("value")) {
-                result.put(resourceName, String.valueOf(fields.get(key)));
-            }else if (key.getType() != Descriptors.FieldDescriptor.Type.MESSAGE) {
-                String attributeName = String.format("%s.%s", resourceName, key.getName());
-                result.put(attributeName, String.valueOf(fields.get(key)));
+
+            if (isLeaf(attributeName)){
+                result.put(attributeName, convertLeafNodeValue(fields, key));
+            }else{
+                GeneratedMessageV3 message = (GeneratedMessageV3) fields.get(key);
+                flattenResource(attributeName, message.getAllFields(), result);
             }
         }
+    }
+
+    public String convertLeafNodeValue(Map<Descriptors.FieldDescriptor, Object> fields, Descriptors.FieldDescriptor key){
+        if (key.getType() != Descriptors.FieldDescriptor.Type.MESSAGE) {
+            return String.valueOf(fields.get(key));
+        }
+
+        if (key.isRepeated()) {
+            List<String> values = new ArrayList<>();
+            List<GeneratedMessageV3> field = (List<GeneratedMessageV3>) fields.get(key);
+            for (GeneratedMessageV3 msg : field) {
+                try{
+                    values.add(JsonFormat.printer().print(msg));
+                }catch (InvalidProtocolBufferException ignored){}
+            }
+            return "[" + String.join(",", values) + "]";
+        }else{
+            try{
+                return JsonFormat.printer().print((GeneratedMessageV3) fields.get(key));
+            }catch (InvalidProtocolBufferException ignored){}
+        }
+        return null;
+    }
+
+    public boolean isLeaf(String attributeName){
+        for (ColumnConfig columnConfig:task.getFields().getColumns()){
+            if (columnConfig.getName().equals(attributeName)){
+                return true;
+            }
+        }
+        return false;
     }
 
     public SearchGoogleAdsRequest buildRequest(PluginTask task, String query) {
