@@ -23,7 +23,7 @@ public class TestGoogleAdsValueConverter {
                 "ad_group_criterion.effective_cpc_bid_micros",
                 "ad_group_criterion.effective_cpm_bid_micros",
                 "ad_group_criterion.position_estimates.estimated_add_cost_at_first_position_cpc",
-                "ad_group.cpv_bid_micros",
+                "ad_group.cpc_bid_micros",
                 "ad_group.effective_target_cpa_micros",
                 "bidding_strategy.target_cpa.cpc_bid_ceiling_micros",
                 "bidding_strategy.target_cpa.cpc_bid_floor_micros",
