@@ -86,10 +86,28 @@ public class GoogleAdsReporter {
     }
 
     public String convertLeafNodeValue(Map<Descriptors.FieldDescriptor, Object> fields, Descriptors.FieldDescriptor key){
-        if (key.getType() != Descriptors.FieldDescriptor.Type.MESSAGE){
-            return convertNonMessageType(key, fields);
-        }else{
+        if (key.getType() == Descriptors.FieldDescriptor.Type.MESSAGE){
             return convertMessageType(key, fields);
+        }else if (key.getType() == Descriptors.FieldDescriptor.Type.ENUM){
+            return convertEnumType(key, fields);
+        }
+        return convertNonMessageType(key, fields);
+    }
+
+    public String convertEnumType(Descriptors.FieldDescriptor key, Map<Descriptors.FieldDescriptor, Object> fields){
+        if (key.isRepeated()){
+            List<Descriptors.GenericDescriptor> enumValues = (List<Descriptors.GenericDescriptor>) fields.get(key);
+            ArrayNode arrayNode = mapper.createArrayNode();
+            for (Descriptors.GenericDescriptor enumValue: enumValues){
+                arrayNode.add(enumValue.toString());
+            }
+            try{
+                return mapper.writeValueAsString(arrayNode);
+            }catch (JsonProcessingException ignored){
+                return null;
+            }
+        }else{
+            return String.valueOf(fields.get(key));
         }
     }
 
