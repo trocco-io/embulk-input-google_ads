@@ -65,6 +65,15 @@ public class GoogleAdsReporter {
         return reports;
     }
 
+    public Iterable<GoogleAdsServiceClient.SearchPage> getReportPage(){
+        String query = buildQuery(task);
+        logger.info(query);
+        SearchGoogleAdsRequest request = buildRequest(task, query);
+        GoogleAdsServiceClient googleAdsService = client.getVersion5().createGoogleAdsServiceClient();
+        GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
+        return response.iteratePages();
+    }
+
     public void flattenResource(String resourceName, Map<Descriptors.FieldDescriptor, Object> fields, Map<String, String> result) {
         for (Descriptors.FieldDescriptor key : fields.keySet()) {
             String attributeName;

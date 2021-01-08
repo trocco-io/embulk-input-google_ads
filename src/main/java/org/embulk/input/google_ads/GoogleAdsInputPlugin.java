@@ -1,9 +1,11 @@
 package org.embulk.input.google_ads;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.google.api.gax.grpc.GrpcHeaderInterceptor;
+import com.google.ads.googleads.v5.services.GoogleAdsRow;
+import com.google.ads.googleads.v5.services.GoogleAdsServiceClient;
 import com.google.common.collect.ImmutableList;
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigSource;
@@ -47,14 +49,20 @@ public class GoogleAdsInputPlugin
                           Schema schema, int taskIndex,
                           PageOutput output) {
         PluginTask task = taskSource.loadTask(PluginTask.class);
+        Map<String, String> result;
 
         GoogleAdsReporter reporter = new GoogleAdsReporter(task);
         reporter.connect();
         try {
             try (PageBuilder pageBuilder = getPageBuilder(schema, output)) {
-                for (Map<String, String> row : reporter.getReport()) {
-                    schema.visitColumns(new GoogleAdsColumnVisitor(new GoogleAdsAccessor(task, row), pageBuilder, task));
-                    pageBuilder.addRecord();
+                for (GoogleAdsServiceClient.SearchPage page : reporter.getReportPage()){
+                    for (GoogleAdsRow row : page.iterateAll()) {
+                        result = new HashMap<String, String>() {};
+                        reporter.flattenResource(null, row.getAllFields(), result);
+                        schema.visitColumns(new GoogleAdsColumnVisitor(new GoogleAdsAccessor(task, result), pageBuilder, task));
+                        pageBuilder.addRecord();
+                    }
+                    pageBuilder.flush();
                 }
                 pageBuilder.finish();
             }
