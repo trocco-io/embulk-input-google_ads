@@ -55,8 +55,8 @@ public class GoogleAdsInputPlugin
         reporter.connect();
         try {
             try (PageBuilder pageBuilder = getPageBuilder(schema, output)) {
-                for (GoogleAdsServiceClient.SearchPage page : reporter.getReportPage()){
-                    for (GoogleAdsRow row : page.iterateAll()) {
+                for (GoogleAdsServiceClient.SearchPage page :  reporter.getReportPage()) {
+                    for (GoogleAdsRow row : page.getValues()) {
                         result = new HashMap<String, String>() {};
                         reporter.flattenResource(null, row.getAllFields(), result);
                         schema.visitColumns(new GoogleAdsColumnVisitor(new GoogleAdsAccessor(task, result), pageBuilder, task));

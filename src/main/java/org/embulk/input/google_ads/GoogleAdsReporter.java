@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.ads.googleads.lib.GoogleAdsClient;
-import com.google.ads.googleads.v5.services.GoogleAdsRow;
 import com.google.ads.googleads.v5.services.GoogleAdsServiceClient;
 import com.google.ads.googleads.v5.services.SearchGoogleAdsRequest;
 import com.google.auth.oauth2.UserCredentials;
@@ -45,24 +44,6 @@ public class GoogleAdsReporter {
                 .setClientSecret(task.getClientSecret())
                 .setRefreshToken(task.getRefreshToken())
                 .build();
-    }
-
-    public List<Map<String, String>> getReport() {
-        List<Map<String, String>> reports = new ArrayList<Map<String, String>>() {
-        };
-        String query = buildQuery(task);
-        logger.info(query);
-        SearchGoogleAdsRequest request = buildRequest(task, query);
-        GoogleAdsServiceClient googleAdsService = client.getVersion5().createGoogleAdsServiceClient();
-        GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
-
-        Map<String, String> result;
-        for (GoogleAdsRow row : response.iterateAll()) {
-            result = new HashMap<String, String>() {};
-            flattenResource(null, row.getAllFields(), result);
-            reports.add(result);
-        }
-        return reports;
     }
 
     public Iterable<GoogleAdsServiceClient.SearchPage> getReportPage(){
