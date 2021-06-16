@@ -9,17 +9,16 @@ import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 
-import java.util.HashMap;
-
-public class TestGoogleAdsReporter {
+public class TestGoogleAdsReporter
+{
     @Rule
     public TestingEmbulk embulk = TestingEmbulk.builder()
             .registerPlugin(InputPlugin.class, "google_ads", GoogleAdsInputPlugin.class)
             .build();
 
-
     @Test
-    public void testTraverse(){
+    public void testTraverse()
+    {
         String json =
                 "{" +
                         "    \"person\": {" +
@@ -41,6 +40,7 @@ public class TestGoogleAdsReporter {
             JsonNode resultJson = reporter.traverse(jsonNode);
             Assert.assertEquals("{\"person\":{\"first_name\":\"John\",\"last_name\":\"Doe\",\"address\":\"NewYork\",\"pets\":[{\"type\":\"Dog\",\"animal_name\":\"Jolly\"},{\"type\":\"Cat\",\"animal_name\":\"Grizabella\"},{\"type\":\"Fish\",\"animal_name\":\"Nimo\"}]}}",
                     mapper.writeValueAsString(resultJson));
-        }catch (Exception ignored){}
+        } catch (Exception ignored) {
+        }
     }
 }

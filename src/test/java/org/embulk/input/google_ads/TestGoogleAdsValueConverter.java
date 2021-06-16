@@ -6,10 +6,11 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.List;
 
-public class TestGoogleAdsValueConverter {
-
+public class TestGoogleAdsValueConverter
+{
     @Test
-    public void testShouldApplyMicro(){
+    public void testShouldApplyMicro()
+    {
         List<String> microFields = Arrays.asList(
                 "metrics.cost_micros",
                 "metrics.average_cpc",
@@ -34,18 +35,20 @@ public class TestGoogleAdsValueConverter {
                 "campaign_budget.amount_micros",
                 "campaign_budget.recommended_budget_amount_micros"
         );
-        for (String field : microFields){
+        for (String field : microFields) {
             Assert.assertTrue(GoogleAdsValueConverter.shouldApplyMicro(field));
         }
     }
 
     @Test
-    public void testShouldApplyMicro_false(){
+    public void testShouldApplyMicro_false()
+    {
         Assert.assertFalse(GoogleAdsValueConverter.shouldApplyMicro("campaign.name"));
     }
 
     @Test
-    public void testApplyMicro(){
+    public void testApplyMicro()
+    {
         Assert.assertEquals(GoogleAdsValueConverter.applyMicro("10000000"), "10.0");
         Assert.assertEquals(GoogleAdsValueConverter.applyMicro("12300000"), "12.3");
         Assert.assertEquals(GoogleAdsValueConverter.applyMicro("12345678"), "12.345678");

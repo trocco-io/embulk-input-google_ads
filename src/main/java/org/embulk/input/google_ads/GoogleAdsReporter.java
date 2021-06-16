@@ -7,8 +7,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.ads.googleads.lib.GoogleAdsClient;
-import com.google.ads.googleads.v5.services.GoogleAdsServiceClient;
-import com.google.ads.googleads.v5.services.SearchGoogleAdsRequest;
+import com.google.ads.googleads.v6.services.GoogleAdsServiceClient;
+import com.google.ads.googleads.v6.services.SearchGoogleAdsRequest;
 import com.google.auth.oauth2.UserCredentials;
 import com.google.common.base.CaseFormat;
 import com.google.protobuf.Descriptors;
@@ -16,16 +16,20 @@ import com.google.protobuf.GeneratedMessageV3;
 import com.google.protobuf.util.JsonFormat;
 import org.embulk.spi.ColumnConfig;
 
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import org.msgpack.core.annotations.VisibleForTesting;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-public class GoogleAdsReporter {
+public class GoogleAdsReporter
+{
     private static final int PAGE_SIZE = 1000;
     private final Logger logger = LoggerFactory.getLogger(GoogleAdsReporter.class);
     private final PluginTask task;
@@ -33,12 +37,14 @@ public class GoogleAdsReporter {
     private GoogleAdsClient client;
     private ObjectMapper mapper = new ObjectMapper();
 
-    public GoogleAdsReporter(PluginTask task) {
+    public GoogleAdsReporter(PluginTask task)
+    {
         this.task = task;
         this.credentials = buildCredential(task);
     }
 
-    private UserCredentials buildCredential(PluginTask task) {
+    private UserCredentials buildCredential(PluginTask task)
+    {
         return UserCredentials.newBuilder()
                 .setClientId(task.getClientId())
                 .setClientSecret(task.getClientSecret())
@@ -46,28 +52,30 @@ public class GoogleAdsReporter {
                 .build();
     }
 
-    public Iterable<GoogleAdsServiceClient.SearchPage> getReportPage(){
+    public Iterable<GoogleAdsServiceClient.SearchPage> getReportPage()
+    {
         String query = buildQuery(task);
         logger.info(query);
         SearchGoogleAdsRequest request = buildRequest(task, query);
-        GoogleAdsServiceClient googleAdsService = client.getVersion5().createGoogleAdsServiceClient();
+        GoogleAdsServiceClient googleAdsService = client.getVersion6().createGoogleAdsServiceClient();
         GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
         return response.iteratePages();
     }
 
-    public void flattenResource(String resourceName, Map<Descriptors.FieldDescriptor, Object> fields, Map<String, String> result) {
+    public void flattenResource(String resourceName, Map<Descriptors.FieldDescriptor, Object> fields, Map<String, String> result)
+    {
         for (Descriptors.FieldDescriptor key : fields.keySet()) {
             String attributeName;
-            if (resourceName == null){
+            if (resourceName == null) {
                 attributeName = key.getName();
-            }else{
+            } else {
                 attributeName = String.format("%s.%s", resourceName, key.getName());
             }
 
-            if (isLeaf(attributeName)){
+            if (isLeaf(attributeName)) {
                 result.put(attributeName, convertLeafNodeValue(fields, key));
-            }else{
-                if (!key.getName().equals("resource_name")){
+            } else {
+                if (!key.getName().equals("resource_name")) {
                     GeneratedMessageV3 message = (GeneratedMessageV3) fields.get(key);
                     flattenResource(attributeName, message.getAllFields(), result);
                 }
@@ -75,78 +83,83 @@ public class GoogleAdsReporter {
         }
     }
 
-    public String convertLeafNodeValue(Map<Descriptors.FieldDescriptor, Object> fields, Descriptors.FieldDescriptor key){
-        if (key.getType() == Descriptors.FieldDescriptor.Type.MESSAGE){
+    public String convertLeafNodeValue(Map<Descriptors.FieldDescriptor, Object> fields, Descriptors.FieldDescriptor key)
+    {
+        if (key.getType() == Descriptors.FieldDescriptor.Type.MESSAGE) {
             return convertMessageType(key, fields);
-        }else if (key.getType() == Descriptors.FieldDescriptor.Type.ENUM){
+        } else if (key.getType() == Descriptors.FieldDescriptor.Type.ENUM) {
             return convertEnumType(key, fields);
         }
         return convertNonMessageType(key, fields);
     }
 
-    public String convertEnumType(Descriptors.FieldDescriptor key, Map<Descriptors.FieldDescriptor, Object> fields){
-        if (key.isRepeated()){
+    public String convertEnumType(Descriptors.FieldDescriptor key, Map<Descriptors.FieldDescriptor, Object> fields)
+    {
+        if (key.isRepeated()) {
             List<Descriptors.GenericDescriptor> enumValues = (List<Descriptors.GenericDescriptor>) fields.get(key);
             ArrayNode arrayNode = mapper.createArrayNode();
-            for (Descriptors.GenericDescriptor enumValue: enumValues){
+            for (Descriptors.GenericDescriptor enumValue : enumValues) {
                 arrayNode.add(enumValue.toString());
             }
-            try{
+            try {
                 return mapper.writeValueAsString(arrayNode);
-            }catch (JsonProcessingException ignored){
+            } catch (JsonProcessingException ignored) {
                 return null;
             }
-        }else{
+        } else {
             return String.valueOf(fields.get(key));
         }
     }
 
-    public String convertNonMessageType(Descriptors.FieldDescriptor key, Map<Descriptors.FieldDescriptor, Object> fields){
-        if (key.isRepeated()){
+    public String convertNonMessageType(Descriptors.FieldDescriptor key, Map<Descriptors.FieldDescriptor, Object> fields)
+    {
+        if (key.isRepeated()) {
             List<String> values = (List<String>) fields.get(key);
             ArrayNode arrayNode = mapper.createArrayNode();
-            for (String val: values){
+            for (String val : values) {
                 arrayNode.add(val);
             }
-            try{
+            try {
                 return mapper.writeValueAsString(arrayNode);
-            }catch (JsonProcessingException ignored){
+            } catch (JsonProcessingException ignored) {
                 return null;
             }
-        }else{
+        } else {
             return String.valueOf(fields.get(key));
         }
     }
 
-    public String convertMessageType(Descriptors.FieldDescriptor key, Map<Descriptors.FieldDescriptor, Object> fields){
+    public String convertMessageType(Descriptors.FieldDescriptor key, Map<Descriptors.FieldDescriptor, Object> fields)
+    {
         if (key.isRepeated()) {
             ArrayNode result = mapper.createArrayNode();
             List<GeneratedMessageV3> field = (List<GeneratedMessageV3>) fields.get(key);
-            try{
+            try {
                 for (GeneratedMessageV3 msg : field) {
                     JsonNode jsonNode = mapper.readTree(JsonFormat.printer().print(msg));
                     JsonNode jsonNodeWithSnakeCase = traverse(jsonNode);
                     result.add(jsonNodeWithSnakeCase);
                 }
                 return mapper.writeValueAsString(result);
-            }catch (Exception e){
+            } catch (Exception e) {
                 System.out.println(e.getMessage());
                 return null;
             }
-        }else{
-            try{
+        } else {
+            try {
                 String jsonStr = JsonFormat.printer().print((GeneratedMessageV3) fields.get(key));
                 JsonNode jsonNode = mapper.readTree(jsonStr);
                 JsonNode jsonNodeWithSnakeCase = traverse(jsonNode);
                 return mapper.writeValueAsString(jsonNodeWithSnakeCase);
-            }catch (Exception e){
+            } catch (Exception e) {
                 System.out.println(e.getMessage());
                 return null;
             }
         }
     }
 
-    public JsonNode traverse(JsonNode node) {
+    public JsonNode traverse(JsonNode node)
+    {
         if (node.isValueNode()) {
             if (JsonNodeType.NULL == node.getNodeType()) {
                 return null;
@@ -173,16 +186,18 @@ public class GoogleAdsReporter {
         }
     }
 
-    public boolean isLeaf(String attributeName){
-        for (ColumnConfig columnConfig:task.getFields().getColumns()){
-            if (columnConfig.getName().equals(attributeName)){
+    public boolean isLeaf(String attributeName)
+    {
+        for (ColumnConfig columnConfig : task.getFields().getColumns()) {
+            if (columnConfig.getName().equals(attributeName)) {
                 return true;
             }
         }
         return false;
     }
 
-    public SearchGoogleAdsRequest buildRequest(PluginTask task, String query) {
+    public SearchGoogleAdsRequest buildRequest(PluginTask task, String query)
+    {
         return SearchGoogleAdsRequest.newBuilder()
                 .setCustomerId(task.getCustomerId())
                 .setPageSize(PAGE_SIZE)
@@ -190,7 +205,8 @@ public class GoogleAdsReporter {
                 .build();
     }
 
-    public String buildQuery(PluginTask task) {
+    public String buildQuery(PluginTask task)
+    {
         StringBuilder sb = new StringBuilder();
 
         sb.append("SELECT ");
@@ -209,8 +225,10 @@ public class GoogleAdsReporter {
     }
 
     @VisibleForTesting
-    public List<String> buildWhereClauseConditions(PluginTask task) {
-        List<String> whereConditions = new ArrayList<String>() {
+    public List<String> buildWhereClauseConditions(PluginTask task)
+    {
+        List<String> whereConditions = new ArrayList<String>()
+        {
         };
 
         if (task.getDateRange().isPresent()) {
@@ -231,7 +249,8 @@ public class GoogleAdsReporter {
         }
     }
 
-    public void connect() {
+    public void connect()
+    {
         GoogleAdsClient.Builder builder = GoogleAdsClient.newBuilder()
                 .setDeveloperToken(task.getDeveloperToken())
                 .setCredentials(credentials);
@@ -240,5 +259,4 @@ public class GoogleAdsReporter {
         }
         this.client = builder.build();
     }
-
 }

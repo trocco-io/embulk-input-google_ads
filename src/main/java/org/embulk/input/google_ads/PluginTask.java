@@ -8,8 +8,8 @@ import org.embulk.spi.SchemaConfig;
 import java.util.List;
 import java.util.Optional;
 
-public interface PluginTask
-        extends Task {
+public interface PluginTask extends Task
+{
     @Config("customer_id")
     String getCustomerId();
 
@@ -54,5 +54,4 @@ public interface PluginTask
     @Config("_replace_dot_in_column_with")
     @ConfigDefault("\"_\"")
     String getReplaceDotInColumnWith();
-
 }
