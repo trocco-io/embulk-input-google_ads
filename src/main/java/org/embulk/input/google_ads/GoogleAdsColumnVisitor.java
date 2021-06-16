@@ -31,8 +31,7 @@ public class GoogleAdsColumnVisitor implements ColumnVisitor
         String data = accessor.get(column.getName());
         if (data == null) {
             pageBuilder.setNull(column);
-        }
-        else {
+        } else {
             pageBuilder.setString(column, data);
         }
     }
@@ -43,8 +42,7 @@ public class GoogleAdsColumnVisitor implements ColumnVisitor
         String data = accessor.get(column.getName());
         if (data == null) {
             pageBuilder.setNull(column);
-        }
-        else {
+        } else {
             pageBuilder.setLong(column, (long) Double.parseDouble(data));
         }
     }
@@ -55,8 +53,7 @@ public class GoogleAdsColumnVisitor implements ColumnVisitor
         String data = accessor.get(column.getName());
         if (data == null) {
             pageBuilder.setNull(column);
-        }
-        else {
+        } else {
             pageBuilder.setBoolean(column, Boolean.parseBoolean(data));
         }
     }
@@ -67,8 +64,7 @@ public class GoogleAdsColumnVisitor implements ColumnVisitor
         try {
             String data = accessor.get(column.getName());
             pageBuilder.setDouble(column, Double.parseDouble(data));
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             pageBuilder.setNull(column);
         }
     }
@@ -93,8 +89,7 @@ public class GoogleAdsColumnVisitor implements ColumnVisitor
             TimestampParser parser = TimestampParser.of(pattern, "UTC");
             Timestamp result = parser.parse(accessor.get(column.getName()));
             pageBuilder.setTimestamp(column, result);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             pageBuilder.setNull(column);
         }
     }
@@ -106,12 +101,10 @@ public class GoogleAdsColumnVisitor implements ColumnVisitor
             JsonElement data = com.google.gson.JsonParser.parseString(accessor.get(column.getName()));
             if (data.isJsonNull() || data.isJsonPrimitive()) {
                 pageBuilder.setNull(column);
-            }
-            else {
+            } else {
                 pageBuilder.setJson(column, new JsonParser().parse(data.toString()));
             }
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             pageBuilder.setNull(column);
         }
     }

@@ -40,8 +40,7 @@ public class TestGoogleAdsReporter
             JsonNode resultJson = reporter.traverse(jsonNode);
             Assert.assertEquals("{\"person\":{\"first_name\":\"John\",\"last_name\":\"Doe\",\"address\":\"NewYork\",\"pets\":[{\"type\":\"Dog\",\"animal_name\":\"Jolly\"},{\"type\":\"Cat\",\"animal_name\":\"Grizabella\"},{\"type\":\"Fish\",\"animal_name\":\"Nimo\"}]}}",
                     mapper.writeValueAsString(resultJson));
-        }
-        catch (Exception ignored) {
+        } catch (Exception ignored) {
         }
     }
 }

@@ -82,8 +82,7 @@ public class GoogleAdsInputPlugin
                 }
                 pageBuilder.finish();
             }
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             logger.error(e.getMessage());
             throw e;
         }

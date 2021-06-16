@@ -10,8 +10,7 @@ public class GoogleAdsUtil
     {
         if (task.getReplaceDotInColumn()) {
             return name.replaceAll("\\.", task.getReplaceDotInColumnWith());
-        }
-        else {
+        } else {
             return name;
         }
     }

@@ -19,8 +19,7 @@ public class GoogleAdsAccessor
             if (name.equals(GoogleAdsUtil.escapeColumnName(entry.getKey(), task))) {
                 if (GoogleAdsValueConverter.shouldApplyMicro(entry.getKey()) && !task.getUseMicro()) {
                     return GoogleAdsValueConverter.applyMicro(entry.getValue());
-                }
-                else {
+                } else {
                     return entry.getValue();
                 }
             }

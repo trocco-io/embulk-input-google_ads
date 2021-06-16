@@ -68,15 +68,13 @@ public class GoogleAdsReporter
             String attributeName;
             if (resourceName == null) {
                 attributeName = key.getName();
-            }
-            else {
+            } else {
                 attributeName = String.format("%s.%s", resourceName, key.getName());
             }
 
             if (isLeaf(attributeName)) {
                 result.put(attributeName, convertLeafNodeValue(fields, key));
-            }
-            else {
+            } else {
                 if (!key.getName().equals("resource_name")) {
                     GeneratedMessageV3 message = (GeneratedMessageV3) fields.get(key);
                     flattenResource(attributeName, message.getAllFields(), result);
@@ -89,8 +87,7 @@ public class GoogleAdsReporter
     {
         if (key.getType() == Descriptors.FieldDescriptor.Type.MESSAGE) {
             return convertMessageType(key, fields);
-        }
-        else if (key.getType() == Descriptors.FieldDescriptor.Type.ENUM) {
+        } else if (key.getType() == Descriptors.FieldDescriptor.Type.ENUM) {
             return convertEnumType(key, fields);
         }
         return convertNonMessageType(key, fields);
@@ -106,12 +103,10 @@ public class GoogleAdsReporter
             }
             try {
                 return mapper.writeValueAsString(arrayNode);
-            }
-            catch (JsonProcessingException ignored) {
+            } catch (JsonProcessingException ignored) {
                 return null;
             }
-        }
-        else {
+        } else {
             return String.valueOf(fields.get(key));
         }
     }
@@ -126,12 +121,10 @@ public class GoogleAdsReporter
             }
             try {
                 return mapper.writeValueAsString(arrayNode);
-            }
-            catch (JsonProcessingException ignored) {
+            } catch (JsonProcessingException ignored) {
                 return null;
             }
-        }
-        else {
+        } else {
             return String.valueOf(fields.get(key));
         }
     }
@@ -148,20 +141,17 @@ public class GoogleAdsReporter
                     result.add(jsonNodeWithSnakeCase);
                 }
                 return mapper.writeValueAsString(result);
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 System.out.println(e.getMessage());
                 return null;
             }
-        }
-        else {
+        } else {
             try {
                 String jsonStr = JsonFormat.printer().print((GeneratedMessageV3) fields.get(key));
                 JsonNode jsonNode = mapper.readTree(jsonStr);
                 JsonNode jsonNodeWithSnakeCase = traverse(jsonNode);
                 return mapper.writeValueAsString(jsonNodeWithSnakeCase);
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 System.out.println(e.getMessage());
                 return null;
             }
@@ -173,23 +163,19 @@ public class GoogleAdsReporter
         if (node.isValueNode()) {
             if (JsonNodeType.NULL == node.getNodeType()) {
                 return null;
-            }
-            else {
+            } else {
                 return node;
             }
-        }
-        else if (node.isNull()) {
+        } else if (node.isNull()) {
             return null;
-        }
-        else if (node.isArray()) {
+        } else if (node.isArray()) {
             ArrayNode arrayNode = (ArrayNode) node;
             ArrayNode cleanedNewArrayNode = mapper.createArrayNode();
             for (JsonNode jsonNode : arrayNode) {
                 cleanedNewArrayNode.add(traverse(jsonNode));
             }
             return cleanedNewArrayNode;
-        }
-        else {
+        } else {
             ObjectNode encodedObjectNode = mapper.createObjectNode();
             for (Iterator<Map.Entry<String, JsonNode>> it = node.fields(); it.hasNext(); ) {
                 Map.Entry<String, JsonNode> entry = it.next();
@@ -258,8 +244,7 @@ public class GoogleAdsReporter
         if (task.getConditions().isPresent()) {
             List<String> conditionList = task.getConditions().get();
             return Stream.concat(conditionList.stream(), whereConditions.stream()).collect(Collectors.toList());
-        }
-        else {
+        } else {
             return whereConditions;
         }
     }
