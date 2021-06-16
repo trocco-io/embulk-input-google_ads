@@ -1,27 +1,38 @@
 package org.embulk.input.google_ads;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import com.google.ads.googleads.v5.services.GoogleAdsRow;
-import com.google.ads.googleads.v5.services.GoogleAdsServiceClient;
+import com.google.ads.googleads.v6.services.GoogleAdsRow;
+import com.google.ads.googleads.v6.services.GoogleAdsServiceClient;
 import com.google.common.collect.ImmutableList;
+
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigSource;
 import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
-import org.embulk.spi.*;
+
+import org.embulk.spi.Column;
+import org.embulk.spi.ColumnConfig;
+import org.embulk.spi.Exec;
+import org.embulk.spi.InputPlugin;
+import org.embulk.spi.PageBuilder;
+import org.embulk.spi.PageOutput;
+import org.embulk.spi.Schema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 public class GoogleAdsInputPlugin
-        implements InputPlugin {
+        implements InputPlugin
+{
     private final Logger logger = LoggerFactory.getLogger(GoogleAdsInputPlugin.class);
 
     @Override
     public ConfigDiff transaction(ConfigSource config,
-                                  InputPlugin.Control control) {
+                                  InputPlugin.Control control)
+    {
         PluginTask task = config.loadConfig(PluginTask.class);
         Schema schema = buildSchema(task);
 
@@ -33,7 +44,8 @@ public class GoogleAdsInputPlugin
     @Override
     public ConfigDiff resume(TaskSource taskSource,
                              Schema schema, int taskCount,
-                             InputPlugin.Control control) {
+                             InputPlugin.Control control)
+    {
         control.run(taskSource, schema, taskCount);
         return Exec.newConfigDiff();
     }
@@ -41,13 +53,15 @@ public class GoogleAdsInputPlugin
     @Override
     public void cleanup(TaskSource taskSource,
                         Schema schema, int taskCount,
-                        List<TaskReport> successTaskReports) {
+                        List<TaskReport> successTaskReports)
+    {
     }
 
     @Override
     public TaskReport run(TaskSource taskSource,
                           Schema schema, int taskIndex,
-                          PageOutput output) {
+                          PageOutput output)
+    {
         PluginTask task = taskSource.loadTask(PluginTask.class);
         Map<String, String> result;
 
@@ -55,9 +69,11 @@ public class GoogleAdsInputPlugin
         reporter.connect();
         try {
             try (PageBuilder pageBuilder = getPageBuilder(schema, output)) {
-                for (GoogleAdsServiceClient.SearchPage page :  reporter.getReportPage()) {
+                for (GoogleAdsServiceClient.SearchPage page : reporter.getReportPage()) {
                     for (GoogleAdsRow row : page.getValues()) {
-                        result = new HashMap<String, String>() {};
+                        result = new HashMap<String, String>()
+                        {
+                        };
                         reporter.flattenResource(null, row.getAllFields(), result);
                         schema.visitColumns(new GoogleAdsColumnVisitor(new GoogleAdsAccessor(task, result), pageBuilder, task));
                         pageBuilder.addRecord();
@@ -66,7 +82,8 @@ public class GoogleAdsInputPlugin
                 }
                 pageBuilder.finish();
             }
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.error(e.getMessage());
             throw e;
         }
@@ -75,15 +92,18 @@ public class GoogleAdsInputPlugin
     }
 
     @Override
-    public ConfigDiff guess(ConfigSource config) {
+    public ConfigDiff guess(ConfigSource config)
+    {
         return Exec.newConfigDiff();
     }
 
-    public GoogleAdsReporter getClient(PluginTask task) {
+    public GoogleAdsReporter getClient(PluginTask task)
+    {
         return new GoogleAdsReporter(task);
     }
 
-    public Schema buildSchema(PluginTask task) {
+    public Schema buildSchema(PluginTask task)
+    {
         ImmutableList.Builder<Column> builder = ImmutableList.builder();
         for (int i = 0; i < task.getFields().size(); i++) {
             ColumnConfig columnConfig = task.getFields().getColumn(i);
@@ -93,8 +113,8 @@ public class GoogleAdsInputPlugin
         return new Schema(builder.build());
     }
 
-    protected PageBuilder getPageBuilder(final Schema schema, final PageOutput output) {
+    protected PageBuilder getPageBuilder(final Schema schema, final PageOutput output)
+    {
         return new PageBuilder(Exec.getBufferAllocator(), schema, output);
     }
-
 }

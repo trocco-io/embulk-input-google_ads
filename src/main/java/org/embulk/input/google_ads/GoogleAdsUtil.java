@@ -1,10 +1,17 @@
 package org.embulk.input.google_ads;
 
-public class GoogleAdsUtil {
-    public static String escapeColumnName(String name, PluginTask task) {
+public class GoogleAdsUtil
+{
+    private GoogleAdsUtil()
+    {
+    }
+
+    public static String escapeColumnName(String name, PluginTask task)
+    {
         if (task.getReplaceDotInColumn()) {
             return name.replaceAll("\\.", task.getReplaceDotInColumnWith());
-        } else {
+        }
+        else {
             return name;
         }
     }
