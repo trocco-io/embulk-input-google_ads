@@ -10,8 +10,8 @@ repositories {
     jcenter()
 }
 
-group="io.trocco"
-version = "0.1.18"
+group = "io.trocco"
+version = "0.1.19"
 description = "embulk input plugin for Google Ads"
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
@@ -41,7 +41,8 @@ embulkPlugin {
 
 publishing {
     publications {
-        embulkPluginMaven(MavenPublication) {  // Publish it with "publishEmbulkPluginMavenPublicationToMavenRepository".
+        embulkPluginMaven(MavenPublication) {
+            // Publish it with "publishEmbulkPluginMavenPublicationToMavenRepository".
             from components.java  // Must be "components.java". The dependency modification works only for it.
         }
     }
@@ -72,12 +73,12 @@ task checkstyle(type: Checkstyle) {
 
 gem {
     from("LICENSE")  // Optional -- if you need other files in the gem.
-    authors = [ "giwa" ]
-    email = [ "ugw.gi.world@gmail.com" ]
+    authors = ["giwa"]
+    email = ["ugw.gi.world@gmail.com"]
     // "description" of the gem is copied from "description" of your Gradle project.
     summary = "Google Ads input plugin for Embulk"
     homepage = "https://github.com/trocco-io/embulk-output-bigquery_java"
-    licenses = [ "Apache-2.0" ]
+    licenses = ["Apache-2.0"]
 }
 
 gemPush {
