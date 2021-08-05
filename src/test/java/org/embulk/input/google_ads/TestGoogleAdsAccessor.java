@@ -9,14 +9,16 @@ import org.junit.Test;
 
 import java.util.HashMap;
 
-public class TestGoogleAdsAccessor {
+public class TestGoogleAdsAccessor
+{
     @Rule
     public TestingEmbulk embulk = TestingEmbulk.builder()
             .registerPlugin(InputPlugin.class, "google_ads", GoogleAdsInputPlugin.class)
             .build();
 
     @Test
-    public void testAccessor(){
+    public void testAccessor()
+    {
         HashMap<String, String> row = new HashMap<>();
         row.put("name", "value");
         row.put("name2", "value2");

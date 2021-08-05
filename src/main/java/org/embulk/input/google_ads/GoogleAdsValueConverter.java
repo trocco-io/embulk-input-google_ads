@@ -3,7 +3,12 @@ package org.embulk.input.google_ads;
 import java.util.Arrays;
 import java.util.List;
 
-public class GoogleAdsValueConverter {
+public class GoogleAdsValueConverter
+{
+    private GoogleAdsValueConverter()
+    {
+    }
+
     private static final List<String> MICRO_FIELDS = Arrays.asList(
             "metrics.cost_micros",
             "metrics.average_cpc",
@@ -29,12 +34,13 @@ public class GoogleAdsValueConverter {
             "campaign_budget.recommended_budget_amount_micros"
     );
 
-    public static boolean shouldApplyMicro(String name){
+    public static boolean shouldApplyMicro(String name)
+    {
         return MICRO_FIELDS.contains(name);
     }
 
-    public static String applyMicro(String num){
+    public static String applyMicro(String num)
+    {
         return String.valueOf(Double.parseDouble(num) / Math.pow(10, 6));
     }
-
 }
