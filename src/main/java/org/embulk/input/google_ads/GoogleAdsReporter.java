@@ -7,8 +7,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.ads.googleads.lib.GoogleAdsClient;
-import com.google.ads.googleads.v6.services.GoogleAdsServiceClient;
-import com.google.ads.googleads.v6.services.SearchGoogleAdsRequest;
+import com.google.ads.googleads.v8.services.GoogleAdsServiceClient;
+import com.google.ads.googleads.v8.services.SearchGoogleAdsRequest;
 import com.google.auth.oauth2.UserCredentials;
 import com.google.common.base.CaseFormat;
 import com.google.protobuf.Descriptors;
@@ -57,7 +57,7 @@ public class GoogleAdsReporter
         String query = buildQuery(task);
         logger.info(query);
         SearchGoogleAdsRequest request = buildRequest(task, query);
-        GoogleAdsServiceClient googleAdsService = client.getVersion6().createGoogleAdsServiceClient();
+        GoogleAdsServiceClient googleAdsService = client.getVersion8().createGoogleAdsServiceClient();
         GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
         return response.iteratePages();
     }
