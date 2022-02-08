@@ -76,8 +76,10 @@ public class GoogleAdsReporter
                 result.put(attributeName, convertLeafNodeValue(fields, key));
             } else {
                 if (!key.getName().equals("resource_name")) {
-                    GeneratedMessageV3 message = (GeneratedMessageV3) fields.get(key);
-                    flattenResource(attributeName, message.getAllFields(), result);
+                    if (fields.get(key) instanceof GeneratedMessageV3) {
+                        GeneratedMessageV3 message = (GeneratedMessageV3) fields.get(key);
+                        flattenResource(attributeName, message.getAllFields(), result);
+                    }
                 }
             }
         }
