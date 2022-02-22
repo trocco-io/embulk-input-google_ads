@@ -7,8 +7,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.ads.googleads.lib.GoogleAdsClient;
-import com.google.ads.googleads.v8.services.GoogleAdsServiceClient;
-import com.google.ads.googleads.v8.services.SearchGoogleAdsRequest;
+import com.google.ads.googleads.v9.services.GoogleAdsServiceClient;
+import com.google.ads.googleads.v9.services.SearchGoogleAdsRequest;
 import com.google.auth.oauth2.UserCredentials;
 import com.google.common.base.CaseFormat;
 import com.google.protobuf.Descriptors;
@@ -57,7 +57,7 @@ public class GoogleAdsReporter
         String query = buildQuery(task);
         logger.info(query);
         SearchGoogleAdsRequest request = buildRequest(task, query);
-        GoogleAdsServiceClient googleAdsService = client.getVersion8().createGoogleAdsServiceClient();
+        GoogleAdsServiceClient googleAdsService = client.getVersion9().createGoogleAdsServiceClient();
         GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
         return response.iteratePages();
     }
@@ -74,11 +74,9 @@ public class GoogleAdsReporter
 
             if (isLeaf(attributeName)) {
                 result.put(attributeName, convertLeafNodeValue(fields, key));
-            } else {
-                if (!key.getName().equals("resource_name")) {
-                    GeneratedMessageV3 message = (GeneratedMessageV3) fields.get(key);
-                    flattenResource(attributeName, message.getAllFields(), result);
-                }
+            } else if (fields.get(key) instanceof GeneratedMessageV3) {
+                GeneratedMessageV3 message = (GeneratedMessageV3) fields.get(key);
+                flattenResource(attributeName, message.getAllFields(), result);
             }
         }
     }
