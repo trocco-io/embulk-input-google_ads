@@ -20,5 +20,5 @@ jobs:
       - run: ./gradlew gem
       - run: ls
       - run: dir="$(pwd)"
-      - run: cd ${dir}/build/gems
+      - run: cd ./build/gems
       - run: ls
