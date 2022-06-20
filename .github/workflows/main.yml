@@ -15,5 +15,9 @@ jobs:
           java-version: 1.8
       - name: test
         run: ./gradlew test
-      - name: Show Current Version
-        run: ./gradlew printVersion
+#      - name: Build Gem & Put it into './build/gems/' Directory
+      - run: ls
+      - run: ./gradlew gem
+      - run: ls
+      - run: cd /build/gems
+      - run: ls
