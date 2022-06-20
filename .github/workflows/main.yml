@@ -1,3 +1,5 @@
+name: build_and_push
+
 on:
   workflow_dispatch:
 
