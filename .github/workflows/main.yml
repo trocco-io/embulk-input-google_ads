@@ -21,3 +21,8 @@ jobs:
       - run: ls
       - run: dir="$(pwd)"
       - run: cd ./build/gems && ls
+
+      - name: Set up JRuby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: jruby
