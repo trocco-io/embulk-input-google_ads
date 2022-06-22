@@ -16,7 +16,7 @@ description = "embulk input plugin for Google Ads"
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 version = {
-    def baseVersion = "0.1.22"
+    def baseVersion = "0.1.22.TEST"
     def vd = versionDetails()
     if (vd.commitDistance == 0 && vd.lastTag ==~ /^[0-9]+\.[0-9]+\.[0-9]+(\.[a-zA-Z0-9]+)?/) {
         baseVersion
