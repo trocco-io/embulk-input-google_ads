@@ -219,6 +219,11 @@ public class GoogleAdsReporter
             sb.append(String.join(" AND ", whereClause));
         }
 
+        if (task.getLimit().isPresent()) {
+            sb.append(" LIMIT ");
+            sb.append(task.getLimit().get());
+        }
+
         return sb.toString();
     }
 
@@ -231,7 +236,11 @@ public class GoogleAdsReporter
 
         if (task.getDateRange().isPresent()) {
             StringBuilder dateSb = new StringBuilder();
-            dateSb.append("segments.date BETWEEN '");
+            if (task.getResourceType().equals("change_event")) {
+                dateSb.append("change_event.change_date_time BETWEEN '");
+            } else {
+                dateSb.append("segments.date BETWEEN '");
+            }
             dateSb.append(task.getDateRange().get().getStartDate());
             dateSb.append("' AND '");
             dateSb.append(task.getDateRange().get().getEndDate());

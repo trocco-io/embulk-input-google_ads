@@ -43,6 +43,10 @@ public interface PluginTask extends Task
     @ConfigDefault("null")
     Optional<GoogleAdsDateRange> getDateRange();
 
+    @Config("limit")
+    @ConfigDefault("null")
+    Optional<String> getLimit();
+
     @Config("_use_micro")
     @ConfigDefault("true")
     boolean getUseMicro();
