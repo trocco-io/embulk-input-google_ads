@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.ads.googleads.lib.GoogleAdsClient;
+import com.google.ads.googleads.v13.services.GoogleAdsRow;
 import com.google.ads.googleads.v13.services.GoogleAdsServiceClient;
 import com.google.ads.googleads.v13.services.SearchGoogleAdsRequest;
 import com.google.auth.oauth2.UserCredentials;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 public class GoogleAdsReporter
 {
@@ -54,12 +56,33 @@ public class GoogleAdsReporter
 
     public Iterable<GoogleAdsServiceClient.SearchPage> getReportPage()
     {
-        String query = buildQuery(task);
-        logger.info(query);
-        SearchGoogleAdsRequest request = buildRequest(task, query);
-        GoogleAdsServiceClient googleAdsService = client.getVersion13().createGoogleAdsServiceClient();
-        GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
-        return response.iteratePages();
+        List<GoogleAdsServiceClient.SearchPage> pages = new ArrayList<GoogleAdsServiceClient.SearchPage>();
+
+        List<GoogleAdsServiceClient.SearchPage> splitedPages = new ArrayList<GoogleAdsServiceClient.SearchPage>();
+        String startDateTime = null;
+       do {
+            splitedPages.clear();
+
+            String query = buildQuery(task, startDateTime);
+            logger.info(query);
+            SearchGoogleAdsRequest request = buildRequest(task, query);
+            GoogleAdsServiceClient googleAdsService = client.getVersion13().createGoogleAdsServiceClient();
+            GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
+            response.iteratePages().iterator().forEachRemaining(splitedPages::add);
+
+            if (task.getResourceType().equals("change_event")) {
+                GoogleAdsServiceClient.SearchPage lastPage = splitedPages.get(splitedPages.size() - 1);
+                GoogleAdsRow lastRow = StreamSupport.stream(lastPage.getValues().spliterator(), false).reduce((first, second) -> second).orElse(null);
+                if (lastRow == null) {
+                    break;
+                } else {
+                    startDateTime = lastRow.getChangeEvent().getChangeDateTime();
+                }
+            }
+            splitedPages.iterator().forEachRemaining(pages::add);
+       } while (startDateTime != null);
+
+        return pages;
     }
 
     public void flattenResource(String resourceName, Map<Descriptors.FieldDescriptor, Object> fields, Map<String, String> result)
@@ -203,7 +226,7 @@ public class GoogleAdsReporter
                 .build();
     }
 
-    public String buildQuery(PluginTask task)
+    public String buildQuery(PluginTask task, String startDateTime)
     {
         StringBuilder sb = new StringBuilder();
 
@@ -213,7 +236,7 @@ public class GoogleAdsReporter
         sb.append(" FROM ");
         sb.append(task.getResourceType());
 
-        List<String> whereClause = buildWhereClauseConditions(task);
+        List<String> whereClause = buildWhereClauseConditions(task, startDateTime);
         if (!whereClause.isEmpty()) {
             sb.append(" WHERE ");
             sb.append(String.join(" AND ", whereClause));
@@ -228,7 +251,7 @@ public class GoogleAdsReporter
     }
 
     @VisibleForTesting
-    public List<String> buildWhereClauseConditions(PluginTask task)
+    public List<String> buildWhereClauseConditions(PluginTask task, String startDateTime)
     {
         List<String> whereConditions = new ArrayList<String>()
         {
@@ -237,14 +260,14 @@ public class GoogleAdsReporter
         if (task.getDateRange().isPresent()) {
             StringBuilder dateSb = new StringBuilder();
             if (task.getResourceType().equals("change_event")) {
-                dateSb.append("change_event.change_date_time BETWEEN '");
+                dateSb.append(buildWhereClauseConditionsForChangeEvent(startDateTime));
             } else {
                 dateSb.append("segments.date BETWEEN '");
+                dateSb.append(task.getDateRange().get().getStartDate());
+                dateSb.append("' AND '");
+                dateSb.append(task.getDateRange().get().getEndDate());
+                dateSb.append("'");
             }
-            dateSb.append(task.getDateRange().get().getStartDate());
-            dateSb.append("' AND '");
-            dateSb.append(task.getDateRange().get().getEndDate());
-            dateSb.append("'");
             whereConditions.add(dateSb.toString());
         }
 
@@ -265,5 +288,26 @@ public class GoogleAdsReporter
             builder.setLoginCustomerId(Long.parseLong(task.getLoginCustomerId().get()));
         }
         this.client = builder.build();
+    }
+
+    private String buildWhereClauseConditionsForChangeEvent(String startDateTime)
+    {
+        StringBuilder dateSb = new StringBuilder();
+        dateSb.append("change_event.change_date_time ");
+        if (startDateTime == null) {
+            dateSb.append(" >= '");
+            dateSb.append(task.getDateRange().get().getStartDate());
+        } else {
+            dateSb.append(" > '");
+            dateSb.append(startDateTime);
+        }
+        dateSb.append("' AND ");
+        dateSb.append("change_event.change_date_time ");
+        dateSb.append(" <= '");
+        dateSb.append(task.getDateRange().get().getEndDate());
+        dateSb.append("'");
+        dateSb.append(" ORDER BY change_event.change_date_time ASC");
+
+        return dateSb.toString();
     }
 }
