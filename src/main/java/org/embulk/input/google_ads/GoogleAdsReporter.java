@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 public class GoogleAdsReporter
 {
@@ -72,7 +71,11 @@ public class GoogleAdsReporter
 
             if (task.getResourceType().equals("change_event")) {
                 GoogleAdsServiceClient.SearchPage lastPage = splitedPages.get(splitedPages.size() - 1);
-                GoogleAdsRow lastRow = StreamSupport.stream(lastPage.getValues().spliterator(), false).reduce((first, second) -> second).orElse(null);
+                GoogleAdsRow lastRow = null;
+                for(GoogleAdsRow row : lastPage.getValues()) {
+                    lastRow = row;
+                }
+
                 if (lastRow == null) {
                     break;
                 } else {
