@@ -79,7 +79,7 @@ public class GoogleAdsReporter
                     startDateTime = lastRow.getChangeEvent().getChangeDateTime();
                 }
             }
-       } while (startDateTime != null);
+       } while (startDateTime != null && !startDateTime.isEmpty());
 
         return pages;
     }
