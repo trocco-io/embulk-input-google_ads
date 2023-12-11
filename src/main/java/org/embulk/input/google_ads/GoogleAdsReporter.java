@@ -57,20 +57,17 @@ public class GoogleAdsReporter
     {
         List<GoogleAdsServiceClient.SearchPage> pages = new ArrayList<GoogleAdsServiceClient.SearchPage>();
 
-        List<GoogleAdsServiceClient.SearchPage> splitedPages = new ArrayList<GoogleAdsServiceClient.SearchPage>();
         String startDateTime = null;
        do {
-            splitedPages.clear();
-
             String query = buildQuery(task, startDateTime);
             logger.info(query);
             SearchGoogleAdsRequest request = buildRequest(task, query);
             GoogleAdsServiceClient googleAdsService = client.getVersion13().createGoogleAdsServiceClient();
             GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
-            response.iteratePages().iterator().forEachRemaining(splitedPages::add);
+            response.iteratePages().iterator().forEachRemaining(pages::add);
 
             if (task.getResourceType().equals("change_event")) {
-                GoogleAdsServiceClient.SearchPage lastPage = splitedPages.get(splitedPages.size() - 1);
+                GoogleAdsServiceClient.SearchPage lastPage = pages.get(pages.size() - 1);
                 GoogleAdsRow lastRow = null;
                 for(GoogleAdsRow row : lastPage.getValues()) {
                     lastRow = row;
@@ -82,7 +79,6 @@ public class GoogleAdsReporter
                     startDateTime = lastRow.getChangeEvent().getChangeDateTime();
                 }
             }
-            splitedPages.iterator().forEachRemaining(pages::add);
        } while (startDateTime != null);
 
         return pages;
