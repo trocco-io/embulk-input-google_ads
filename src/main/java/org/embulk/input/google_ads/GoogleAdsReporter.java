@@ -64,6 +64,11 @@ public class GoogleAdsReporter
             SearchGoogleAdsRequest request = buildRequest(task, query);
             GoogleAdsServiceClient googleAdsService = client.getVersion13().createGoogleAdsServiceClient();
             GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
+
+            if (response.getPage().getResponse().getResultsCount() == 0) {
+                return pages;
+            }
+
             response.iteratePages().iterator().forEachRemaining(pages::add);
 
             if (task.getResourceType().equals("change_event")) {
