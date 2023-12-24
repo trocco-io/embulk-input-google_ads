@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.ads.googleads.lib.GoogleAdsClient;
+import com.google.ads.googleads.v14.services.GoogleAdsRow;
 import com.google.ads.googleads.v14.services.GoogleAdsServiceClient;
 import com.google.ads.googleads.v14.services.SearchGoogleAdsRequest;
 import com.google.auth.oauth2.UserCredentials;
@@ -54,12 +55,38 @@ public class GoogleAdsReporter
 
     public Iterable<GoogleAdsServiceClient.SearchPage> getReportPage()
     {
-        String query = buildQuery(task);
-        logger.info(query);
-        SearchGoogleAdsRequest request = buildRequest(task, query);
-        GoogleAdsServiceClient googleAdsService = client.getVersion14().createGoogleAdsServiceClient();
-        GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
-        return response.iteratePages();
+        List<GoogleAdsServiceClient.SearchPage> pages = new ArrayList<GoogleAdsServiceClient.SearchPage>();
+
+        String startDateTime = null;
+       do {
+            String query = buildQuery(task, startDateTime);
+            logger.info(query);
+            SearchGoogleAdsRequest request = buildRequest(task, query);
+            GoogleAdsServiceClient googleAdsService = client.getVersion14().createGoogleAdsServiceClient();
+            GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
+
+            if (response.getPage().getResponse().getResultsCount() == 0) {
+                return pages;
+            }
+
+            response.iteratePages().iterator().forEachRemaining(pages::add);
+
+            if (task.getResourceType().equals("change_event")) {
+                GoogleAdsServiceClient.SearchPage lastPage = pages.get(pages.size() - 1);
+                GoogleAdsRow lastRow = null;
+                for(GoogleAdsRow row : lastPage.getValues()) {
+                    lastRow = row;
+                }
+
+                if (lastRow == null) {
+                    break;
+                } else {
+                    startDateTime = lastRow.getChangeEvent().getChangeDateTime();
+                }
+            }
+       } while (startDateTime != null && !startDateTime.isEmpty());
+
+        return pages;
     }
 
     public void flattenResource(String resourceName, Map<Descriptors.FieldDescriptor, Object> fields, Map<String, String> result)
@@ -203,7 +230,7 @@ public class GoogleAdsReporter
                 .build();
     }
 
-    public String buildQuery(PluginTask task)
+    public String buildQuery(PluginTask task, String startDateTime)
     {
         StringBuilder sb = new StringBuilder();
 
@@ -213,17 +240,22 @@ public class GoogleAdsReporter
         sb.append(" FROM ");
         sb.append(task.getResourceType());
 
-        List<String> whereClause = buildWhereClauseConditions(task);
+        List<String> whereClause = buildWhereClauseConditions(task, startDateTime);
         if (!whereClause.isEmpty()) {
             sb.append(" WHERE ");
             sb.append(String.join(" AND ", whereClause));
+        }
+
+        if (task.getLimit().isPresent()) {
+            sb.append(" LIMIT ");
+            sb.append(task.getLimit().get());
         }
 
         return sb.toString();
     }
 
     @VisibleForTesting
-    public List<String> buildWhereClauseConditions(PluginTask task)
+    public List<String> buildWhereClauseConditions(PluginTask task, String startDateTime)
     {
         List<String> whereConditions = new ArrayList<String>()
         {
@@ -231,11 +263,15 @@ public class GoogleAdsReporter
 
         if (task.getDateRange().isPresent()) {
             StringBuilder dateSb = new StringBuilder();
-            dateSb.append("segments.date BETWEEN '");
-            dateSb.append(task.getDateRange().get().getStartDate());
-            dateSb.append("' AND '");
-            dateSb.append(task.getDateRange().get().getEndDate());
-            dateSb.append("'");
+            if (task.getResourceType().equals("change_event")) {
+                dateSb.append(buildWhereClauseConditionsForChangeEvent(startDateTime));
+            } else {
+                dateSb.append("segments.date BETWEEN '");
+                dateSb.append(task.getDateRange().get().getStartDate());
+                dateSb.append("' AND '");
+                dateSb.append(task.getDateRange().get().getEndDate());
+                dateSb.append("'");
+            }
             whereConditions.add(dateSb.toString());
         }
 
@@ -256,5 +292,26 @@ public class GoogleAdsReporter
             builder.setLoginCustomerId(Long.parseLong(task.getLoginCustomerId().get()));
         }
         this.client = builder.build();
+    }
+
+    private String buildWhereClauseConditionsForChangeEvent(String startDateTime)
+    {
+        StringBuilder dateSb = new StringBuilder();
+        dateSb.append("change_event.change_date_time ");
+        if (startDateTime == null) {
+            dateSb.append(" >= '");
+            dateSb.append(task.getDateRange().get().getStartDate());
+        } else {
+            dateSb.append(" > '");
+            dateSb.append(startDateTime);
+        }
+        dateSb.append("' AND ");
+        dateSb.append("change_event.change_date_time ");
+        dateSb.append(" <= '");
+        dateSb.append(task.getDateRange().get().getEndDate());
+        dateSb.append("'");
+        dateSb.append(" ORDER BY change_event.change_date_time ASC");
+
+        return dateSb.toString();
     }
 }
