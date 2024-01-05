@@ -2,12 +2,13 @@ package org.embulk.input.google_ads;
 
 import com.google.gson.JsonElement;
 import org.embulk.spi.Column;
-import org.embulk.spi.ColumnConfig;
+
 import org.embulk.spi.ColumnVisitor;
 import org.embulk.spi.PageBuilder;
-import org.embulk.spi.json.JsonParser;
+
 import org.embulk.spi.time.Timestamp;
-import org.embulk.spi.time.TimestampParser;
+import org.embulk.util.config.units.ColumnConfig;
+import org.embulk.util.json.JsonParser;
 
 import java.util.List;
 
@@ -79,15 +80,12 @@ public class GoogleAdsColumnVisitor implements ColumnVisitor
                 String configColumnName = GoogleAdsUtil.escapeColumnName(config.getName(), task);
                 if (configColumnName.equals(column.getName())
                         && config.getConfigSource() != null
-                        && config.getConfigSource().getObjectNode() != null
-                        && config.getConfigSource().getObjectNode().get("format") != null
-                        && config.getConfigSource().getObjectNode().get("format").isTextual()) {
-                    pattern = config.getConfigSource().getObjectNode().get("format").asText();
+                        && config.getConfigSource().get(String.class, "format", null) != null) {
+                    pattern = config.getConfigSource().get(String.class, "format", null);
                     break;
                 }
             }
-            TimestampParser parser = TimestampParser.of(pattern, "UTC");
-            Timestamp result = parser.parse(accessor.get(column.getName()));
+            Timestamp result = Timestamp.ofString(pattern);
             pageBuilder.setTimestamp(column, result);
         } catch (Exception e) {
             pageBuilder.setNull(column);

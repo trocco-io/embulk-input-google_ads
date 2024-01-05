@@ -2,14 +2,23 @@ package org.embulk.input.google_ads;
 
 import org.embulk.config.ConfigSource;
 import org.embulk.test.TestingEmbulk;
+import org.embulk.util.config.ConfigMapper;
+import org.embulk.util.config.ConfigMapperFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class TestHelper
 {
+    private static final ConfigMapperFactory CONFIG_MAPPER_FACTORY = ConfigMapperFactory.builder().addDefaultModules().build();
+
     private TestHelper()
     {
+    }
+
+    public static PluginTask loadTask(ConfigSource conf) {
+        final ConfigMapper configMapper = CONFIG_MAPPER_FACTORY.createConfigMapper();
+        return configMapper.map(conf, PluginTask.class);
     }
 
     public static ConfigSource getBaseConfig(TestingEmbulk embulk)
