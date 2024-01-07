@@ -74,7 +74,7 @@ public class GoogleAdsReporter
             if (task.getResourceType().equals("change_event")) {
                 GoogleAdsServiceClient.SearchPage lastPage = pages.get(pages.size() - 1);
                 GoogleAdsRow lastRow = null;
-                for(GoogleAdsRow row : lastPage.getValues()) {
+                for (GoogleAdsRow row : lastPage.getValues()) {
                     lastRow = row;
                 }
 
