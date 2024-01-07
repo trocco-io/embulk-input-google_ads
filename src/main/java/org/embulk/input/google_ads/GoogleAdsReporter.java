@@ -121,6 +121,7 @@ public class GoogleAdsReporter
     public String convertEnumType(Descriptors.FieldDescriptor key, Map<Descriptors.FieldDescriptor, Object> fields)
     {
         if (key.isRepeated()) {
+            @SuppressWarnings("unchecked")
             List<Descriptors.GenericDescriptor> enumValues = (List<Descriptors.GenericDescriptor>) fields.get(key);
             ArrayNode arrayNode = mapper.createArrayNode();
             for (Descriptors.GenericDescriptor enumValue : enumValues) {
@@ -139,6 +140,7 @@ public class GoogleAdsReporter
     public String convertNonMessageType(Descriptors.FieldDescriptor key, Map<Descriptors.FieldDescriptor, Object> fields)
     {
         if (key.isRepeated()) {
+            @SuppressWarnings("unchecked")
             List<String> values = (List<String>) fields.get(key);
             ArrayNode arrayNode = mapper.createArrayNode();
             for (String val : values) {
@@ -158,6 +160,7 @@ public class GoogleAdsReporter
     {
         if (key.isRepeated()) {
             ArrayNode result = mapper.createArrayNode();
+            @SuppressWarnings("unchecked")
             List<GeneratedMessageV3> field = (List<GeneratedMessageV3>) fields.get(key);
             try {
                 for (GeneratedMessageV3 msg : field) {
