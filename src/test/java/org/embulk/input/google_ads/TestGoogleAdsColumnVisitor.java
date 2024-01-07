@@ -4,10 +4,6 @@ import com.google.common.collect.ImmutableList;
 import org.embulk.EmbulkTestRuntime;
 import org.embulk.config.ConfigSource;
 import org.embulk.spi.*;
-import org.embulk.spi.json.JsonObject;
-import org.embulk.spi.json.JsonValue;
-import org.embulk.spi.time.Instants;
-import org.embulk.spi.time.Timestamp;
 import org.embulk.test.TestingEmbulk;
 import org.embulk.util.config.units.ColumnConfig;
 import org.junit.Assert;
@@ -121,6 +117,7 @@ public class TestGoogleAdsColumnVisitor
 
         Assert.assertEquals(1, output.pages.size());
 
+        @SuppressWarnings("deprecation") // embulk v0.9-compatible
         PageReader pageReader = new PageReader(schema);
         pageReader.setPage(output.pages.get(0));
 

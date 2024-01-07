@@ -117,9 +117,9 @@ public class GoogleAdsInputPlugin
         return new Schema(builder.build());
     }
 
+    @SuppressWarnings("deprecation") // After　the end of embulk v0.9 support, use Exec.getPageBuilder
     protected PageBuilder getPageBuilder(final Schema schema, final PageOutput output)
     {
-        // After　the end of embulk v0.9 support, use Exec.getPageBuilder
         return new PageBuilder(Exec.getBufferAllocator(), schema, output);
     }
 }

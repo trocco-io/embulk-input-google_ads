@@ -70,6 +70,7 @@ public class GoogleAdsColumnVisitor implements ColumnVisitor
         }
     }
 
+    @SuppressWarnings("deprecation") // After the end of embulk v0.9 support, replace Timestamp with Instant
     @Override
     public void timestampColumn(Column column)
     {
