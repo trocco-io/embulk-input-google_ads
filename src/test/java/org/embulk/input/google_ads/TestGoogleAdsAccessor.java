@@ -3,8 +3,6 @@ package org.embulk.input.google_ads;
 import org.embulk.config.ConfigSource;
 import org.embulk.spi.InputPlugin;
 import org.embulk.test.TestingEmbulk;
-import org.embulk.util.config.ConfigMapper;
-import org.embulk.util.config.ConfigMapperFactory;
 
 import org.junit.Assert;
 import org.junit.Rule;

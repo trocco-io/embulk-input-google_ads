@@ -5,9 +5,6 @@ import org.embulk.test.TestingEmbulk;
 import org.embulk.util.config.ConfigMapper;
 import org.embulk.util.config.ConfigMapperFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class TestHelper
 {
     private static final ConfigMapperFactory CONFIG_MAPPER_FACTORY = ConfigMapperFactory.builder().addDefaultModules().build();
@@ -16,7 +13,8 @@ public class TestHelper
     {
     }
 
-    public static PluginTask loadTask(ConfigSource conf) {
+    public static PluginTask loadTask(ConfigSource conf)
+    {
         final ConfigMapper configMapper = CONFIG_MAPPER_FACTORY.createConfigMapper();
         return configMapper.map(conf, PluginTask.class);
     }

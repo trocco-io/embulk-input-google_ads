@@ -3,7 +3,13 @@ package org.embulk.input.google_ads;
 import com.google.common.collect.ImmutableList;
 import org.embulk.EmbulkTestRuntime;
 import org.embulk.config.ConfigSource;
-import org.embulk.spi.*;
+import org.embulk.spi.Column;
+import org.embulk.spi.InputPlugin;
+import org.embulk.spi.PageBuilder;
+import org.embulk.spi.PageBuilderImpl;
+import org.embulk.spi.PageReader;
+import org.embulk.spi.Schema;
+import org.embulk.spi.TestPageBuilderReader;
 import org.embulk.test.TestingEmbulk;
 import org.embulk.util.config.units.ColumnConfig;
 import org.junit.Assert;
@@ -24,7 +30,8 @@ public class TestGoogleAdsColumnVisitor
     @Rule public EmbulkTestRuntime runtime;
 
     @Before
-    public void setUp() {
+    public void setUp()
+    {
         runtime = new EmbulkTestRuntime();
     }
 
@@ -100,7 +107,8 @@ public class TestGoogleAdsColumnVisitor
         Assert.assertFalse(pageReader.nextRecord());
     }
 
-    private PageReader visitColumns(String value, ConfigSource configSource) {
+    private PageReader visitColumns(String value, ConfigSource configSource)
+    {
         ConfigSource conf = TestHelper.getBaseConfigWithFields(embulk, configSource);
 
         PluginTask task = TestHelper.loadTask(conf);
