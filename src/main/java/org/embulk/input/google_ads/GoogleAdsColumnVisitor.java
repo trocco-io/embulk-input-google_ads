@@ -6,9 +6,9 @@ import org.embulk.spi.Column;
 import org.embulk.spi.ColumnVisitor;
 import org.embulk.spi.PageBuilder;
 
-import org.embulk.spi.time.Timestamp;
 import org.embulk.util.config.units.ColumnConfig;
 import org.embulk.util.json.JsonParser;
+import org.embulk.util.timestamp.TimestampFormatter;
 
 import java.util.List;
 
@@ -85,7 +85,8 @@ public class GoogleAdsColumnVisitor implements ColumnVisitor
                     break;
                 }
             }
-            Timestamp result = Timestamp.ofString(pattern);
+            TimestampFormatter formatter = TimestampFormatter.builder(pattern, true).build();
+            org.embulk.spi.time.Timestamp result = org.embulk.spi.time.Timestamp.ofInstant(formatter.parse(accessor.get(column.getName())));
             pageBuilder.setTimestamp(column, result);
         } catch (Exception e) {
             pageBuilder.setNull(column);
