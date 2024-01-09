@@ -7,9 +7,9 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.ads.googleads.lib.GoogleAdsClient;
-import com.google.ads.googleads.v13.services.GoogleAdsRow;
-import com.google.ads.googleads.v13.services.GoogleAdsServiceClient;
-import com.google.ads.googleads.v13.services.SearchGoogleAdsRequest;
+import com.google.ads.googleads.v14.services.GoogleAdsRow;
+import com.google.ads.googleads.v14.services.GoogleAdsServiceClient;
+import com.google.ads.googleads.v14.services.SearchGoogleAdsRequest;
 import com.google.auth.oauth2.UserCredentials;
 import com.google.common.base.CaseFormat;
 import com.google.protobuf.Descriptors;
@@ -62,7 +62,7 @@ public class GoogleAdsReporter
             String query = buildQuery(task, startDateTime);
             logger.info(query);
             SearchGoogleAdsRequest request = buildRequest(task, query);
-            GoogleAdsServiceClient googleAdsService = client.getVersion13().createGoogleAdsServiceClient();
+            GoogleAdsServiceClient googleAdsService = client.getVersion14().createGoogleAdsServiceClient();
             GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
 
             if (response.getPage().getResponse().getResultsCount() == 0) {
