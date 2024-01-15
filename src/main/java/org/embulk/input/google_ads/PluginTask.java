@@ -1,9 +1,10 @@
 package org.embulk.input.google_ads;
 
-import org.embulk.config.Config;
-import org.embulk.config.ConfigDefault;
-import org.embulk.config.Task;
-import org.embulk.spi.SchemaConfig;
+import org.embulk.util.config.Config;
+import org.embulk.util.config.ConfigDefault;
+
+import org.embulk.util.config.Task;
+import org.embulk.util.config.units.SchemaConfig;
 
 import java.util.List;
 import java.util.Optional;

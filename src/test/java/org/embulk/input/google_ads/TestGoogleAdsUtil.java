@@ -18,7 +18,7 @@ public class TestGoogleAdsUtil
     public void testEscapeColumnName_not_escaped()
     {
         ConfigSource conf = TestHelper.getBaseConfig(embulk);
-        String escapedName = GoogleAdsUtil.escapeColumnName("ad.ad_group.ad", conf.loadConfig(PluginTask.class));
+        String escapedName = GoogleAdsUtil.escapeColumnName("ad.ad_group.ad", TestHelper.loadTask(conf));
         Assert.assertEquals("ad.ad_group.ad", escapedName);
     }
 
@@ -27,7 +27,7 @@ public class TestGoogleAdsUtil
     {
         ConfigSource conf = TestHelper.getBaseConfig(embulk);
         conf.set("_replace_dot_in_column", "true");
-        String escapedName = GoogleAdsUtil.escapeColumnName("ad.ad_group.ad", conf.loadConfig(PluginTask.class));
+        String escapedName = GoogleAdsUtil.escapeColumnName("ad.ad_group.ad", TestHelper.loadTask(conf));
         Assert.assertEquals("ad_ad_group_ad", escapedName);
     }
 
@@ -37,7 +37,7 @@ public class TestGoogleAdsUtil
         ConfigSource conf = TestHelper.getBaseConfig(embulk);
         conf.set("_replace_dot_in_column", "true");
         conf.set("_replace_dot_in_column_with", "/");
-        String escapedName = GoogleAdsUtil.escapeColumnName("ad.ad_group.ad", conf.loadConfig(PluginTask.class));
+        String escapedName = GoogleAdsUtil.escapeColumnName("ad.ad_group.ad", TestHelper.loadTask(conf));
         Assert.assertEquals("ad/ad_group/ad", escapedName);
     }
 }

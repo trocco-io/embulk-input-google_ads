@@ -28,17 +28,23 @@ tasks.withType(JavaCompile) {
     options.compilerArgs << "-Xlint:deprecation" << "-Xlint:unchecked"
 }
 
+def embulkVersion = '0.10.43'
+
 dependencies {
-    compileOnly "org.embulk:embulk-core:0.9.23"
-    // compile "YOUR_JAR_DEPENDENCY_GROUP:YOUR_JAR_DEPENDENCY_MODULE:YOUR_JAR_DEPENDENCY_VERSION"
+    compileOnly("org.embulk:embulk-api:$embulkVersion") { exclude group: "org.slf4j", module: "slf4j-api" }
+    compileOnly("org.embulk:embulk-spi:$embulkVersion") { exclude group: "org.slf4j", module: "slf4j-api" }
+    compile "org.embulk:embulk-util-timestamp:0.2.1"
+    compile "org.embulk:embulk-util-config:0.3.3"
+    compile "org.embulk:embulk-util-json:0.2.2"
+    compile "com.google.guava:guava:31.1-jre"
+    compile "org.slf4j:slf4j-log4j12:1.7.36"
     compile project(path: ":shadow-google-ads-helper", configuration: "shadow")
+
     testCompile "junit:junit:4.13"
-    testCompile 'org.embulk:embulk-standards:0.9.23'
-    testCompile 'org.embulk:embulk-test:0.9.23'
     testCompile "org.mockito:mockito-core:1.10.19"
-    testCompile "org.embulk:embulk-core:0.9.23:tests"
-    testCompile "org.embulk:embulk-deps-buffer:0.9.23"
-    testCompile "org.embulk:embulk-deps-config:0.9.23"
+    testCompile("org.embulk:embulk-core:$embulkVersion") { exclude group: "org.slf4j", module: "slf4j-api" }
+    testCompile("org.embulk:embulk-deps:$embulkVersion") { exclude group: "org.slf4j", module: "slf4j-api" }
+    testCompile("org.embulk:embulk-junit4:$embulkVersion") { exclude group: "org.slf4j", module: "slf4j-api" }
 }
 
 embulkPlugin {

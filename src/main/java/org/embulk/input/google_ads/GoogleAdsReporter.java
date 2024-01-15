@@ -15,8 +15,8 @@ import com.google.common.base.CaseFormat;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.GeneratedMessageV3;
 import com.google.protobuf.util.JsonFormat;
-import org.embulk.spi.ColumnConfig;
 
+import org.embulk.util.config.units.ColumnConfig;
 import org.msgpack.core.annotations.VisibleForTesting;
 
 import org.slf4j.Logger;

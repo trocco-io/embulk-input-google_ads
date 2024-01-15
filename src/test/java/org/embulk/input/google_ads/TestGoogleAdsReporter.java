@@ -34,7 +34,7 @@ public class TestGoogleAdsReporter
                         "}";
         ObjectMapper mapper = new ObjectMapper();
         ConfigSource conf = TestHelper.getBaseConfig(embulk);
-        GoogleAdsReporter reporter = new GoogleAdsReporter(conf.loadConfig(PluginTask.class));
+        GoogleAdsReporter reporter = new GoogleAdsReporter(TestHelper.loadTask(conf));
         try {
             JsonNode jsonNode = mapper.readTree(json);
             JsonNode resultJson = reporter.traverse(jsonNode);
