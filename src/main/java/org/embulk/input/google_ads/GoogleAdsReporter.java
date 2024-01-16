@@ -76,7 +76,6 @@ public class GoogleAdsReporter
             GoogleAdsRow lastRow = fetchLastRow(pages);
             if (lastRow == null) return ;
 
-            lastRow.getChangeEvent().getChangeDateTime();
             Map<String, String> nextParams = new HashMap<>();
             nextParams.put("start_datetime", lastRow.getChangeEvent().getChangeDateTime());
             search(consumer, nextParams);
