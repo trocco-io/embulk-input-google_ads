@@ -63,23 +63,23 @@ public class GoogleAdsInputPlugin
                           PageOutput output)
     {
         PluginTask task = taskSource.loadTask(PluginTask.class);
-        Map<String, String> result;
-
         GoogleAdsReporter reporter = new GoogleAdsReporter(task);
         reporter.connect();
         try {
             try (PageBuilder pageBuilder = getPageBuilder(schema, output)) {
-                for (GoogleAdsServiceClient.SearchPage page : reporter.getReportPage()) {
-                    for (GoogleAdsRow row : page.getValues()) {
-                        result = new HashMap<String, String>()
-                        {
-                        };
-                        reporter.flattenResource(null, row.getAllFields(), result);
-                        schema.visitColumns(new GoogleAdsColumnVisitor(new GoogleAdsAccessor(task, result), pageBuilder, task));
-                        pageBuilder.addRecord();
-                    }
-                    pageBuilder.flush();
-                }
+                Map<String, String> params = new HashMap<>();
+                reporter.search(
+                    searchPage -> {
+                        for (GoogleAdsRow row : searchPage.getValues()) {
+                            Map<String, String> result = new HashMap<>();
+                            reporter.flattenResource(null, row.getAllFields(), result);
+                            schema.visitColumns(new GoogleAdsColumnVisitor(new GoogleAdsAccessor(task, result), pageBuilder, task));
+                            pageBuilder.addRecord();
+                        }
+                        pageBuilder.flush();
+                    },
+                    params
+                );
                 pageBuilder.finish();
             }
         } catch (Exception e) {

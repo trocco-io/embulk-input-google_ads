@@ -26,6 +26,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -37,6 +39,8 @@ public class GoogleAdsReporter
     private final UserCredentials credentials;
     private GoogleAdsClient client;
     private ObjectMapper mapper = new ObjectMapper();
+
+    private Iterable<GoogleAdsServiceClient.SearchPage> searchResult;
 
     public GoogleAdsReporter(PluginTask task)
     {
@@ -53,40 +57,34 @@ public class GoogleAdsReporter
                 .build();
     }
 
-    public Iterable<GoogleAdsServiceClient.SearchPage> getReportPage()
-    {
-        List<GoogleAdsServiceClient.SearchPage> pages = new ArrayList<GoogleAdsServiceClient.SearchPage>();
+    private Iterable<GoogleAdsServiceClient.SearchPage> search(Map<String, String> params) {
+        String query = buildQuery(task, params);
+        logger.info(query);
+        SearchGoogleAdsRequest request = buildRequest(task, query);
+        GoogleAdsServiceClient googleAdsService = client.getVersion14().createGoogleAdsServiceClient();
+        GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
+        return response.iteratePages();
+    }
 
-        String startDateTime = null;
-       do {
-            String query = buildQuery(task, startDateTime);
-            logger.info(query);
-            SearchGoogleAdsRequest request = buildRequest(task, query);
-            GoogleAdsServiceClient googleAdsService = client.getVersion14().createGoogleAdsServiceClient();
-            GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
+    public void search(Consumer<GoogleAdsServiceClient.SearchPage> consumer, Map<String, String> params) {
+        GoogleAdsServiceClient.SearchPage lastPage = null;
+        for(GoogleAdsServiceClient.SearchPage page: search(params)) {
+            consumer.accept(page);
+            lastPage = page;
+        }
 
-            if (response.getPage().getResponse().getResultsCount() == 0) {
-                return pages;
+        if (task.getResourceType().equals("change_event")) {
+            if (lastPage == null) return ;
+            GoogleAdsRow lastRow = null;
+            for (GoogleAdsRow row: lastPage.getValues()) {
+                lastRow = row;
             }
+            if (lastRow == null) return ;
 
-            response.iteratePages().iterator().forEachRemaining(pages::add);
-
-            if (task.getResourceType().equals("change_event")) {
-                GoogleAdsServiceClient.SearchPage lastPage = pages.get(pages.size() - 1);
-                GoogleAdsRow lastRow = null;
-                for(GoogleAdsRow row : lastPage.getValues()) {
-                    lastRow = row;
-                }
-
-                if (lastRow == null) {
-                    break;
-                } else {
-                    startDateTime = lastRow.getChangeEvent().getChangeDateTime();
-                }
-            }
-       } while (startDateTime != null && !startDateTime.isEmpty());
-
-        return pages;
+            Map<String, String> nextParams = new HashMap<>();
+            nextParams.put("start_datetime", lastRow.getChangeEvent().getChangeDateTime());
+            search(consumer, nextParams);
+        }
     }
 
     public void flattenResource(String resourceName, Map<Descriptors.FieldDescriptor, Object> fields, Map<String, String> result)
@@ -230,7 +228,7 @@ public class GoogleAdsReporter
                 .build();
     }
 
-    public String buildQuery(PluginTask task, String startDateTime)
+    public String buildQuery(PluginTask task, Map<String, String> params)
     {
         StringBuilder sb = new StringBuilder();
 
@@ -240,7 +238,7 @@ public class GoogleAdsReporter
         sb.append(" FROM ");
         sb.append(task.getResourceType());
 
-        List<String> whereClause = buildWhereClauseConditions(task, startDateTime);
+        List<String> whereClause = buildWhereClauseConditions(task, params);
         if (!whereClause.isEmpty()) {
             sb.append(" WHERE ");
             sb.append(String.join(" AND ", whereClause));
@@ -255,7 +253,7 @@ public class GoogleAdsReporter
     }
 
     @VisibleForTesting
-    public List<String> buildWhereClauseConditions(PluginTask task, String startDateTime)
+    public List<String> buildWhereClauseConditions(PluginTask task, Map<String, String> params)
     {
         List<String> whereConditions = new ArrayList<String>()
         {
@@ -264,7 +262,7 @@ public class GoogleAdsReporter
         if (task.getDateRange().isPresent()) {
             StringBuilder dateSb = new StringBuilder();
             if (task.getResourceType().equals("change_event")) {
-                dateSb.append(buildWhereClauseConditionsForChangeEvent(startDateTime));
+                dateSb.append(buildWhereClauseConditionsForChangeEvent(params.get("start_datetime")));
             } else {
                 dateSb.append("segments.date BETWEEN '");
                 dateSb.append(task.getDateRange().get().getStartDate());
