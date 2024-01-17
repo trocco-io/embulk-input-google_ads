@@ -66,34 +66,25 @@ public class GoogleAdsReporter
         return response.iteratePages();
     }
 
-    public void search(Consumer<Iterable<GoogleAdsServiceClient.SearchPage>> consumer, Map<String, String> params) {
-        Iterable<GoogleAdsServiceClient.SearchPage> pages = search(params);
-        consumer.accept(pages);
+    public void search(Consumer<GoogleAdsServiceClient.SearchPage> consumer, Map<String, String> params) {
+        GoogleAdsServiceClient.SearchPage lastPage = null;
+        for(GoogleAdsServiceClient.SearchPage page: search(params)) {
+            consumer.accept(page);
+            lastPage = page;
+        }
 
         if (task.getResourceType().equals("change_event")) {
-            // reset iterator
-            pages.iterator();
-            GoogleAdsRow lastRow = fetchLastRow(pages);
+            if (lastPage == null) return ;
+            GoogleAdsRow lastRow = null;
+            for (GoogleAdsRow row: lastPage.getValues()) {
+                lastRow = row;
+            }
             if (lastRow == null) return ;
 
             Map<String, String> nextParams = new HashMap<>();
             nextParams.put("start_datetime", lastRow.getChangeEvent().getChangeDateTime());
             search(consumer, nextParams);
         }
-    }
-
-    private GoogleAdsRow fetchLastRow(Iterable<GoogleAdsServiceClient.SearchPage> pages) {
-        GoogleAdsServiceClient.SearchPage lastPage = null;
-        for (GoogleAdsServiceClient.SearchPage searchPage : pages) {
-            lastPage = searchPage;
-        }
-        if (lastPage == null) return null;
-
-        GoogleAdsRow lastRow = null;
-        for (GoogleAdsRow row: lastPage.getValues()) {
-            lastRow = row;
-        }
-        return lastRow;
     }
 
     public void flattenResource(String resourceName, Map<Descriptors.FieldDescriptor, Object> fields, Map<String, String> result)

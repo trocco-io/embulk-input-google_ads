@@ -69,19 +69,16 @@ public class GoogleAdsInputPlugin
             try (PageBuilder pageBuilder = getPageBuilder(schema, output)) {
                 Map<String, String> params = new HashMap<>();
                 reporter.search(
-                      searchPages -> {
-                          searchPages.forEach(page -> {
-                              for (GoogleAdsRow row : page.getValues()) {
-                                  Map<String, String> result = new HashMap<>();
-                                  reporter.flattenResource(null, row.getAllFields(), result);
-                                  schema.visitColumns(new GoogleAdsColumnVisitor(new GoogleAdsAccessor(task, result), pageBuilder, task));
-                                  pageBuilder.addRecord();
-                              }
-                              pageBuilder.flush();
-                          }
-                          );
-                      },
-                      params
+                    searchPage -> {
+                        for (GoogleAdsRow row : searchPage.getValues()) {
+                            Map<String, String> result = new HashMap<>();
+                            reporter.flattenResource(null, row.getAllFields(), result);
+                            schema.visitColumns(new GoogleAdsColumnVisitor(new GoogleAdsAccessor(task, result), pageBuilder, task));
+                            pageBuilder.addRecord();
+                        }
+                        pageBuilder.flush();
+                    },
+                    params
                 );
                 pageBuilder.finish();
             }
