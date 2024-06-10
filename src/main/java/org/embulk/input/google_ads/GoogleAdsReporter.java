@@ -7,9 +7,14 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.ads.googleads.lib.GoogleAdsClient;
+import com.google.ads.googleads.v16.resources.CustomerName;
+import com.google.ads.googleads.v16.services.CustomerServiceClient;
 import com.google.ads.googleads.v16.services.GoogleAdsRow;
 import com.google.ads.googleads.v16.services.GoogleAdsServiceClient;
+import com.google.ads.googleads.v16.services.ListAccessibleCustomersRequest;
 import com.google.ads.googleads.v16.services.SearchGoogleAdsRequest;
+import com.google.ads.googleads.v16.services.SearchGoogleAdsStreamRequest;
+import com.google.ads.googleads.v16.services.SearchGoogleAdsStreamResponse;
 import com.google.auth.oauth2.UserCredentials;
 import com.google.common.base.CaseFormat;
 import com.google.protobuf.Descriptors;
@@ -23,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -37,10 +43,8 @@ public class GoogleAdsReporter
     private final Logger logger = LoggerFactory.getLogger(GoogleAdsReporter.class);
     private final PluginTask task;
     private final UserCredentials credentials;
+    private final ObjectMapper mapper = new ObjectMapper();
     private GoogleAdsClient client;
-    private ObjectMapper mapper = new ObjectMapper();
-
-    private Iterable<GoogleAdsServiceClient.SearchPage> searchResult;
 
     public GoogleAdsReporter(PluginTask task)
     {
@@ -61,7 +65,7 @@ public class GoogleAdsReporter
         String query = buildQuery(task, params);
         logger.info(query);
         SearchGoogleAdsRequest request = buildRequest(task, query);
-        GoogleAdsServiceClient googleAdsService = client.getVersion16().createGoogleAdsServiceClient();
+        GoogleAdsServiceClient googleAdsService = client.getLatestVersion().createGoogleAdsServiceClient();
         GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
         return response.iteratePages();
     }
@@ -283,13 +287,64 @@ public class GoogleAdsReporter
 
     public void connect()
     {
+        this.client = buildClient(task.getLoginCustomerId().orElseGet(() -> getLoginCustomerId(task.getCustomerId())));
+    }
+
+    private Long getLoginCustomerId(String customerId)
+    {
+        try (CustomerServiceClient client = buildClient(null).getLatestVersion().createCustomerServiceClient()) {
+            return client.listAccessibleCustomers(ListAccessibleCustomersRequest.newBuilder().build())
+                    .getResourceNamesList()
+                    .stream()
+                    .map(CustomerName::parse)
+                    .map(CustomerName::getCustomerId)
+                    .map(this::getLoginCustomerClients)
+                    .flatMap(Collection::stream)
+                    .filter(loginCustomerClient -> customerId.equals(loginCustomerClient.customerClientId))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("login customer not found [customer id: " + customerId + "]"))
+                    .loginCustomerId;
+        }
+    }
+
+    private List<LoginCustomerClient> getLoginCustomerClients(String customerId)
+    {
+        try (GoogleAdsServiceClient client = buildClient(null).getLatestVersion().createGoogleAdsServiceClient()) {
+            return client.searchStreamCallable().call(SearchGoogleAdsStreamRequest.newBuilder()
+                            .setCustomerId(customerId)
+                            .setQuery("SELECT customer_client.id, customer_client.manager FROM customer_client")
+                            .build())
+                    .stream()
+                    .map(SearchGoogleAdsStreamResponse::getResultsList)
+                    .flatMap(Collection::stream)
+                    .map(GoogleAdsRow::getCustomerClient)
+                    .filter(customerClient -> !customerClient.getManager())
+                    .map(customerClient -> new LoginCustomerClient(customerId, customerClient.getId()))
+                    .collect(Collectors.toList());
+        }
+    }
+
+    private static class LoginCustomerClient
+    {
+        public LoginCustomerClient(String loginCustomerId, Long customerClientId)
+        {
+            this.loginCustomerId = Long.valueOf(loginCustomerId);
+            this.customerClientId = String.valueOf(customerClientId);
+        }
+
+        final Long loginCustomerId;
+        final String customerClientId;
+    }
+
+    private GoogleAdsClient buildClient(Long loginCustomerId)
+    {
         GoogleAdsClient.Builder builder = GoogleAdsClient.newBuilder()
                 .setDeveloperToken(task.getDeveloperToken())
                 .setCredentials(credentials);
-        if (task.getLoginCustomerId().isPresent()) {
-            builder.setLoginCustomerId(Long.parseLong(task.getLoginCustomerId().get()));
+        if (loginCustomerId != null) {
+            builder.setLoginCustomerId(loginCustomerId);
         }
-        this.client = builder.build();
+        return builder.build();
     }
 
     private String buildWhereClauseConditionsForChangeEvent(String startDateTime)
