@@ -309,7 +309,7 @@ public class GoogleAdsReporter
 
     private List<LoginCustomerClient> getLoginCustomerClients(String customerId)
     {
-        try (GoogleAdsServiceClient client = buildClient(null).getLatestVersion().createGoogleAdsServiceClient()) {
+        try (GoogleAdsServiceClient client = buildClient(Long.valueOf(customerId)).getLatestVersion().createGoogleAdsServiceClient()) {
             return client.searchStreamCallable().call(SearchGoogleAdsStreamRequest.newBuilder()
                             .setCustomerId(customerId)
                             .setQuery("SELECT customer_client.id, customer_client.manager FROM customer_client")
