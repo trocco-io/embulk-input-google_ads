@@ -29,12 +29,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -294,6 +292,18 @@ public class GoogleAdsReporter
 
     private Long getLoginCustomerId(String customerId)
     {
+        List<Long> loginCustomerIds = getLoginCustomerIds(customerId);
+        if (loginCustomerIds.isEmpty()) {
+            throw new RuntimeException("login customer not found [customer id: " + customerId + "]");
+        }
+        if (loginCustomerIds.size() > 1) {
+            logger.warn("ambiguous login customers found [customer id: {}, login customer ids: {}]", customerId, loginCustomerIds.stream().map(Object::toString).collect(Collectors.joining(", ")));
+        }
+        return loginCustomerIds.get(0);
+    }
+
+    private List<Long> getLoginCustomerIds(String customerId)
+    {
         try (CustomerServiceClient client = buildClient(null).getLatestVersion().createCustomerServiceClient()) {
             return client.listAccessibleCustomers(ListAccessibleCustomersRequest.newBuilder().build())
                     .getResourceNamesList()
@@ -302,15 +312,9 @@ public class GoogleAdsReporter
                     .map(CustomerName::getCustomerId)
                     .map(this::getLoginCustomerClients)
                     .flatMap(Collection::stream)
-                    .collect(Collectors.groupingBy(LoginCustomerClient::getCustomerClientId, Collectors.maxBy(Comparator.comparing(LoginCustomerClient::getLevel))))
-                    .values()
-                    .stream()
-                    .filter(Optional::isPresent)
-                    .map(Optional::get)
-                    .filter(loginCustomerClient -> loginCustomerClient.isMe(customerId))
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException("login customer not found [customer id: " + customerId + "]"))
-                    .getLoginCustomerId();
+                    .filter(loginCustomerClient -> loginCustomerClient.customerClientId.equals(customerId))
+                    .map(loginCustomerClient -> Long.valueOf(loginCustomerClient.loginCustomerId))
+                    .collect(Collectors.toList());
         }
     }
 
@@ -319,50 +323,27 @@ public class GoogleAdsReporter
         try (GoogleAdsServiceClient client = buildClient(Long.valueOf(customerId)).getLatestVersion().createGoogleAdsServiceClient()) {
             return client.searchStreamCallable().call(SearchGoogleAdsStreamRequest.newBuilder()
                             .setCustomerId(customerId)
-                            .setQuery("SELECT customer_client.id, customer_client.manager, customer_client.level FROM customer_client")
+                            .setQuery("SELECT customer_client.id FROM customer_client")
                             .build())
                     .stream()
                     .map(SearchGoogleAdsStreamResponse::getResultsList)
                     .flatMap(Collection::stream)
                     .map(GoogleAdsRow::getCustomerClient)
-                    .filter(customerClient -> !customerClient.getManager())
-                    .map(customerClient -> new LoginCustomerClient(customerId, customerClient.getId(), customerClient.getLevel()))
+                    .map(customerClient -> new LoginCustomerClient(customerId, customerClient.getId()))
                     .collect(Collectors.toList());
         }
     }
 
     private static class LoginCustomerClient
     {
-        LoginCustomerClient(String loginCustomerId, Long customerClientId, long level)
+        LoginCustomerClient(String loginCustomerId, Long customerClientId)
         {
             this.loginCustomerId = loginCustomerId;
             this.customerClientId = String.valueOf(customerClientId);
-            this.level = level;
         }
 
         final String loginCustomerId;
         final String customerClientId;
-        final long level;
-
-        Long getLoginCustomerId()
-        {
-            return Long.valueOf(loginCustomerId);
-        }
-
-        String getCustomerClientId()
-        {
-            return customerClientId;
-        }
-
-        long getLevel()
-        {
-            return level;
-        }
-
-        boolean isMe(String customerId)
-        {
-            return customerId.equals(customerClientId) || customerId.equals(loginCustomerId);
-        }
     }
 
     private GoogleAdsClient buildClient(Long loginCustomerId)
