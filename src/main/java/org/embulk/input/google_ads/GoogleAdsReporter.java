@@ -297,9 +297,11 @@ public class GoogleAdsReporter
             throw new RuntimeException("login customer not found [customer id: " + customerId + "]");
         }
         if (loginCustomerIds.size() > 1) {
-            logger.warn("ambiguous login customers found [customer id: {}, login customer ids: {}]", customerId, loginCustomerIds.stream().map(Object::toString).collect(Collectors.joining(", ")));
+            logger.info("multiple login customers found [login customer ids: {}]", loginCustomerIds.stream().map(Object::toString).collect(Collectors.joining(", ")));
         }
-        return loginCustomerIds.get(0);
+        Long loginCustomerId = loginCustomerIds.get(0);
+        logger.info("use this customer [customer id: {}, login customer id: {}] to login", customerId, loginCustomerId);
+        return loginCustomerId;
     }
 
     private List<Long> getLoginCustomerIds(String customerId)
