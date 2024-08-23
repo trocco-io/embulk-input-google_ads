@@ -33,7 +33,6 @@ import java.util.stream.Stream;
 
 public class GoogleAdsReporter
 {
-    private static final int PAGE_SIZE = 1000;
     private final Logger logger = LoggerFactory.getLogger(GoogleAdsReporter.class);
     private final PluginTask task;
     private final UserCredentials credentials;
@@ -223,7 +222,6 @@ public class GoogleAdsReporter
     {
         return SearchGoogleAdsRequest.newBuilder()
                 .setCustomerId(task.getCustomerId())
-                .setPageSize(PAGE_SIZE)
                 .setQuery(query)
                 .build();
     }
