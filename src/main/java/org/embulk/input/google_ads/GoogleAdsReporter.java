@@ -7,9 +7,14 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.ads.googleads.lib.GoogleAdsClient;
-import com.google.ads.googleads.v13.services.GoogleAdsRow;
-import com.google.ads.googleads.v13.services.GoogleAdsServiceClient;
-import com.google.ads.googleads.v13.services.SearchGoogleAdsRequest;
+import com.google.ads.googleads.v16.resources.CustomerName;
+import com.google.ads.googleads.v16.services.CustomerServiceClient;
+import com.google.ads.googleads.v16.services.GoogleAdsRow;
+import com.google.ads.googleads.v16.services.GoogleAdsServiceClient;
+import com.google.ads.googleads.v16.services.ListAccessibleCustomersRequest;
+import com.google.ads.googleads.v16.services.SearchGoogleAdsRequest;
+import com.google.ads.googleads.v16.services.SearchGoogleAdsStreamRequest;
+import com.google.ads.googleads.v16.services.SearchGoogleAdsStreamResponse;
 import com.google.auth.oauth2.UserCredentials;
 import com.google.common.base.CaseFormat;
 import com.google.protobuf.Descriptors;
@@ -23,20 +28,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class GoogleAdsReporter
 {
-    private static final int PAGE_SIZE = 1000;
     private final Logger logger = LoggerFactory.getLogger(GoogleAdsReporter.class);
     private final PluginTask task;
     private final UserCredentials credentials;
+    private final ObjectMapper mapper = new ObjectMapper();
     private GoogleAdsClient client;
-    private ObjectMapper mapper = new ObjectMapper();
 
     public GoogleAdsReporter(PluginTask task)
     {
@@ -53,40 +60,34 @@ public class GoogleAdsReporter
                 .build();
     }
 
-    public Iterable<GoogleAdsServiceClient.SearchPage> getReportPage()
-    {
-        List<GoogleAdsServiceClient.SearchPage> pages = new ArrayList<GoogleAdsServiceClient.SearchPage>();
+    private Iterable<GoogleAdsServiceClient.SearchPage> search(Map<String, String> params) {
+        String query = buildQuery(task, params);
+        logger.info(query);
+        SearchGoogleAdsRequest request = buildRequest(task, query);
+        GoogleAdsServiceClient googleAdsService = client.getLatestVersion().createGoogleAdsServiceClient();
+        GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
+        return response.iteratePages();
+    }
 
-        String startDateTime = null;
-       do {
-            String query = buildQuery(task, startDateTime);
-            logger.info(query);
-            SearchGoogleAdsRequest request = buildRequest(task, query);
-            GoogleAdsServiceClient googleAdsService = client.getVersion13().createGoogleAdsServiceClient();
-            GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
+    public void search(Consumer<GoogleAdsServiceClient.SearchPage> consumer, Map<String, String> params) {
+        GoogleAdsServiceClient.SearchPage lastPage = null;
+        for(GoogleAdsServiceClient.SearchPage page: search(params)) {
+            consumer.accept(page);
+            lastPage = page;
+        }
 
-            if (response.getPage().getResponse().getResultsCount() == 0) {
-                return pages;
+        if (task.getResourceType().equals("change_event")) {
+            if (lastPage == null) return ;
+            GoogleAdsRow lastRow = null;
+            for (GoogleAdsRow row: lastPage.getValues()) {
+                lastRow = row;
             }
+            if (lastRow == null) return ;
 
-            response.iteratePages().iterator().forEachRemaining(pages::add);
-
-            if (task.getResourceType().equals("change_event")) {
-                GoogleAdsServiceClient.SearchPage lastPage = pages.get(pages.size() - 1);
-                GoogleAdsRow lastRow = null;
-                for(GoogleAdsRow row : lastPage.getValues()) {
-                    lastRow = row;
-                }
-
-                if (lastRow == null) {
-                    break;
-                } else {
-                    startDateTime = lastRow.getChangeEvent().getChangeDateTime();
-                }
-            }
-       } while (startDateTime != null && !startDateTime.isEmpty());
-
-        return pages;
+            Map<String, String> nextParams = new HashMap<>();
+            nextParams.put("start_datetime", lastRow.getChangeEvent().getChangeDateTime());
+            search(consumer, nextParams);
+        }
     }
 
     public void flattenResource(String resourceName, Map<Descriptors.FieldDescriptor, Object> fields, Map<String, String> result)
@@ -225,12 +226,11 @@ public class GoogleAdsReporter
     {
         return SearchGoogleAdsRequest.newBuilder()
                 .setCustomerId(task.getCustomerId())
-                .setPageSize(PAGE_SIZE)
                 .setQuery(query)
                 .build();
     }
 
-    public String buildQuery(PluginTask task, String startDateTime)
+    public String buildQuery(PluginTask task, Map<String, String> params)
     {
         StringBuilder sb = new StringBuilder();
 
@@ -240,7 +240,7 @@ public class GoogleAdsReporter
         sb.append(" FROM ");
         sb.append(task.getResourceType());
 
-        List<String> whereClause = buildWhereClauseConditions(task, startDateTime);
+        List<String> whereClause = buildWhereClauseConditions(task, params);
         if (!whereClause.isEmpty()) {
             sb.append(" WHERE ");
             sb.append(String.join(" AND ", whereClause));
@@ -255,7 +255,7 @@ public class GoogleAdsReporter
     }
 
     @VisibleForTesting
-    public List<String> buildWhereClauseConditions(PluginTask task, String startDateTime)
+    public List<String> buildWhereClauseConditions(PluginTask task, Map<String, String> params)
     {
         List<String> whereConditions = new ArrayList<String>()
         {
@@ -264,7 +264,7 @@ public class GoogleAdsReporter
         if (task.getDateRange().isPresent()) {
             StringBuilder dateSb = new StringBuilder();
             if (task.getResourceType().equals("change_event")) {
-                dateSb.append(buildWhereClauseConditionsForChangeEvent(startDateTime));
+                dateSb.append(buildWhereClauseConditionsForChangeEvent(params.get("start_datetime")));
             } else {
                 dateSb.append("segments.date BETWEEN '");
                 dateSb.append(task.getDateRange().get().getStartDate());
@@ -285,13 +285,76 @@ public class GoogleAdsReporter
 
     public void connect()
     {
+        this.client = buildClient(task.getLoginCustomerId().orElseGet(() -> getLoginCustomerId(task.getCustomerId())));
+    }
+
+    private Long getLoginCustomerId(String customerId)
+    {
+        List<Long> loginCustomerIds = getLoginCustomerIds(customerId);
+        if (loginCustomerIds.isEmpty()) {
+            throw new RuntimeException("login customer not found [customer id: " + customerId + "]");
+        }
+        if (loginCustomerIds.size() > 1) {
+            logger.info("multiple login customers found [login customer ids: {}]", loginCustomerIds.stream().map(Object::toString).collect(Collectors.joining(", ")));
+        }
+        Long loginCustomerId = loginCustomerIds.get(0);
+        logger.info("use this customer [customer id: {}, login customer id: {}] to login", customerId, loginCustomerId);
+        return loginCustomerId;
+    }
+
+    private List<Long> getLoginCustomerIds(String customerId)
+    {
+        try (CustomerServiceClient client = buildClient(null).getLatestVersion().createCustomerServiceClient()) {
+            return client.listAccessibleCustomers(ListAccessibleCustomersRequest.newBuilder().build())
+                    .getResourceNamesList()
+                    .stream()
+                    .map(CustomerName::parse)
+                    .map(CustomerName::getCustomerId)
+                    .map(this::getLoginCustomerClients)
+                    .flatMap(Collection::stream)
+                    .filter(loginCustomerClient -> loginCustomerClient.customerClientId.equals(customerId))
+                    .map(loginCustomerClient -> Long.valueOf(loginCustomerClient.loginCustomerId))
+                    .collect(Collectors.toList());
+        }
+    }
+
+    private List<LoginCustomerClient> getLoginCustomerClients(String customerId)
+    {
+        try (GoogleAdsServiceClient client = buildClient(Long.valueOf(customerId)).getLatestVersion().createGoogleAdsServiceClient()) {
+            return client.searchStreamCallable().call(SearchGoogleAdsStreamRequest.newBuilder()
+                            .setCustomerId(customerId)
+                            .setQuery("SELECT customer_client.id FROM customer_client")
+                            .build())
+                    .stream()
+                    .map(SearchGoogleAdsStreamResponse::getResultsList)
+                    .flatMap(Collection::stream)
+                    .map(GoogleAdsRow::getCustomerClient)
+                    .map(customerClient -> new LoginCustomerClient(customerId, customerClient.getId()))
+                    .collect(Collectors.toList());
+        }
+    }
+
+    private static class LoginCustomerClient
+    {
+        LoginCustomerClient(String loginCustomerId, Long customerClientId)
+        {
+            this.loginCustomerId = loginCustomerId;
+            this.customerClientId = String.valueOf(customerClientId);
+        }
+
+        final String loginCustomerId;
+        final String customerClientId;
+    }
+
+    private GoogleAdsClient buildClient(Long loginCustomerId)
+    {
         GoogleAdsClient.Builder builder = GoogleAdsClient.newBuilder()
                 .setDeveloperToken(task.getDeveloperToken())
                 .setCredentials(credentials);
-        if (task.getLoginCustomerId().isPresent()) {
-            builder.setLoginCustomerId(Long.parseLong(task.getLoginCustomerId().get()));
+        if (loginCustomerId != null) {
+            builder.setLoginCustomerId(loginCustomerId);
         }
-        this.client = builder.build();
+        return builder.build();
     }
 
     private String buildWhereClauseConditionsForChangeEvent(String startDateTime)

@@ -30,7 +30,7 @@ configurations {
 }
 
 dependencies {
-    compile("com.google.api-ads:google-ads:25.0.0") {
+    compile("com.google.api-ads:google-ads:30.0.0") {
         exclude group: "commons-logging", module: "commons-logging"
     }
 
@@ -46,4 +46,14 @@ shadowJar {
     relocate "com.google.common", "embulk.google-ads.com.google.common"
     relocate "com.google.thirdparty.publicsuffix", "embulk.google-ads.com.google.thirdparty.publicsuffix"
     relocate "com.fasterxml.jackson", "embulk.google-ads.com.fasterxml.jackson"
+}
+
+// https://github.com/google/guava/issues/6612#issuecomment-1614992368
+sourceSets.all {
+  configurations.getByName(runtimeClasspathConfigurationName) {
+    attributes.attribute(Attribute.of("org.gradle.jvm.environment", String), "standard-jvm")
+  }
+  configurations.getByName(compileClasspathConfigurationName) {
+    attributes.attribute(Attribute.of("org.gradle.jvm.environment", String), "standard-jvm")
+  }
 }
