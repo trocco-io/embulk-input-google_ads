@@ -2,12 +2,13 @@ package org.embulk.input.google_ads;
 
 import com.google.gson.JsonElement;
 import org.embulk.spi.Column;
-import org.embulk.spi.ColumnConfig;
+
 import org.embulk.spi.ColumnVisitor;
 import org.embulk.spi.PageBuilder;
-import org.embulk.spi.json.JsonParser;
-import org.embulk.spi.time.Timestamp;
-import org.embulk.spi.time.TimestampParser;
+
+import org.embulk.util.config.units.ColumnConfig;
+import org.embulk.util.json.JsonParser;
+import org.embulk.util.timestamp.TimestampFormatter;
 
 import java.util.List;
 
@@ -69,6 +70,7 @@ public class GoogleAdsColumnVisitor implements ColumnVisitor
         }
     }
 
+    @SuppressWarnings("deprecation") // After the end of embulk v0.9 support, replace Timestamp with Instant
     @Override
     public void timestampColumn(Column column)
     {
@@ -79,15 +81,13 @@ public class GoogleAdsColumnVisitor implements ColumnVisitor
                 String configColumnName = GoogleAdsUtil.escapeColumnName(config.getName(), task);
                 if (configColumnName.equals(column.getName())
                         && config.getConfigSource() != null
-                        && config.getConfigSource().getObjectNode() != null
-                        && config.getConfigSource().getObjectNode().get("format") != null
-                        && config.getConfigSource().getObjectNode().get("format").isTextual()) {
-                    pattern = config.getConfigSource().getObjectNode().get("format").asText();
+                        && config.getConfigSource().get(String.class, "format", null) != null) {
+                    pattern = config.getConfigSource().get(String.class, "format", null);
                     break;
                 }
             }
-            TimestampParser parser = TimestampParser.of(pattern, "UTC");
-            Timestamp result = parser.parse(accessor.get(column.getName()));
+            TimestampFormatter formatter = TimestampFormatter.builder(pattern, true).build();
+            org.embulk.spi.time.Timestamp result = org.embulk.spi.time.Timestamp.ofInstant(formatter.parse(accessor.get(column.getName())));
             pageBuilder.setTimestamp(column, result);
         } catch (Exception e) {
             pageBuilder.setNull(column);

@@ -10,13 +10,15 @@ import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
 
 import org.embulk.spi.Column;
-import org.embulk.spi.ColumnConfig;
 import org.embulk.spi.Exec;
 import org.embulk.spi.InputPlugin;
 import org.embulk.spi.PageBuilder;
 import org.embulk.spi.PageOutput;
 import org.embulk.spi.Schema;
-
+import org.embulk.util.config.ConfigMapper;
+import org.embulk.util.config.ConfigMapperFactory;
+import org.embulk.util.config.TaskMapper;
+import org.embulk.util.config.units.ColumnConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,18 +29,20 @@ import java.util.Map;
 public class GoogleAdsInputPlugin
         implements InputPlugin
 {
+    private static final ConfigMapperFactory CONFIG_MAPPER_FACTORY = ConfigMapperFactory.builder().addDefaultModules().build();
     private final Logger logger = LoggerFactory.getLogger(GoogleAdsInputPlugin.class);
 
     @Override
     public ConfigDiff transaction(ConfigSource config,
                                   InputPlugin.Control control)
     {
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final ConfigMapper configMapper = CONFIG_MAPPER_FACTORY.createConfigMapper();
+        final PluginTask task = configMapper.map(config, PluginTask.class);
         Schema schema = buildSchema(task);
 
         int taskCount = 1;  // number of run() method calls
 
-        return resume(task.dump(), schema, taskCount, control);
+        return resume(task.toTaskSource(), schema, taskCount, control);
     }
 
     @Override
@@ -47,7 +51,7 @@ public class GoogleAdsInputPlugin
                              InputPlugin.Control control)
     {
         control.run(taskSource, schema, taskCount);
-        return Exec.newConfigDiff();
+        return CONFIG_MAPPER_FACTORY.newConfigDiff();
     }
 
     @Override
@@ -62,7 +66,9 @@ public class GoogleAdsInputPlugin
                           Schema schema, int taskIndex,
                           PageOutput output)
     {
-        PluginTask task = taskSource.loadTask(PluginTask.class);
+        final TaskMapper taskMapper = CONFIG_MAPPER_FACTORY.createTaskMapper();
+        final PluginTask task = taskMapper.map(taskSource, PluginTask.class);
+
         GoogleAdsReporter reporter = new GoogleAdsReporter(task);
         reporter.connect();
         try {
@@ -87,13 +93,13 @@ public class GoogleAdsInputPlugin
             throw e;
         }
 
-        return Exec.newTaskReport();
+        return CONFIG_MAPPER_FACTORY.newTaskReport();
     }
 
     @Override
     public ConfigDiff guess(ConfigSource config)
     {
-        return Exec.newConfigDiff();
+        return CONFIG_MAPPER_FACTORY.newConfigDiff();
     }
 
     public GoogleAdsReporter getClient(PluginTask task)
@@ -112,6 +118,7 @@ public class GoogleAdsInputPlugin
         return new Schema(builder.build());
     }
 
+    @SuppressWarnings("deprecation") // After　the end of embulk v0.9 support, use Exec.getPageBuilder
     protected PageBuilder getPageBuilder(final Schema schema, final PageOutput output)
     {
         return new PageBuilder(Exec.getBufferAllocator(), schema, output);
