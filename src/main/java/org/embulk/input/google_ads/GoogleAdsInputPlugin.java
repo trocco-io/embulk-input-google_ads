@@ -1,7 +1,7 @@
 package org.embulk.input.google_ads;
 
-import com.google.ads.googleads.v16.services.GoogleAdsRow;
-import com.google.ads.googleads.v16.services.GoogleAdsServiceClient;
+import com.google.ads.googleads.v18.services.GoogleAdsRow;
+import com.google.ads.googleads.v18.services.GoogleAdsServiceClient;
 import com.google.common.collect.ImmutableList;
 
 import org.embulk.config.ConfigDiff;
