@@ -16,7 +16,7 @@ public interface PluginTask extends Task
 
     @Config("login_customer_id")
     @ConfigDefault("null")
-    Optional<Long> getLoginCustomerId();
+    Optional<String> getLoginCustomerId();
 
     @Config("client_id")
     String getClientId();
