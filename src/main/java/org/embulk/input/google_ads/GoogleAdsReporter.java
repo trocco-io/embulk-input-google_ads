@@ -37,6 +37,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Arrays;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -119,6 +122,10 @@ public class GoogleAdsReporter
             return convertMessageType(key, fields);
         } else if (key.getType() == Descriptors.FieldDescriptor.Type.ENUM) {
             return convertEnumType(key, fields);
+        } else if (isDoubleType(key.getJavaType())) {
+            return convertNumericType(key, fields, Double.class);
+        } else if (isLongType(key.getJavaType())) {
+            return convertNumericType(key, fields, Long.class);
         }
         return convertNonMessageType(key, fields);
     }
@@ -157,6 +164,35 @@ public class GoogleAdsReporter
         } else {
             return String.valueOf(fields.get(key));
         }
+    }
+
+    public <T extends Number> String convertNumericType(Descriptors.FieldDescriptor key, Map<Descriptors.FieldDescriptor, Object> fields, Class<T> type)
+    {
+        if (type != Long.class && type != Double.class) {
+            throw new IllegalArgumentException("Unsupported type: " + type);
+        }
+
+        if (key.isRepeated()) {
+            List<T> values = (List<T>) fields.get(key);
+            ArrayNode arrayNode = mapper.createArrayNode();
+            if (type == Long.class) {
+                for (Long val : (List<Long>) values) {
+                    arrayNode.add(val);
+                }
+            } else {
+                for (Double val : (List<Double>) values) {
+                    arrayNode.add(val);
+                }
+            }
+
+            try {
+                return mapper.writeValueAsString(arrayNode);
+            } catch (JsonProcessingException ignored) {
+                return null;
+            }
+        }
+
+        return String.valueOf(fields.get(key));
     }
 
     public String convertMessageType(Descriptors.FieldDescriptor key, Map<Descriptors.FieldDescriptor, Object> fields)
@@ -386,5 +422,25 @@ public class GoogleAdsReporter
         dateSb.append(" ORDER BY change_event.change_date_time ASC");
 
         return dateSb.toString();
+    }
+
+    private boolean isDoubleType(Descriptors.FieldDescriptor.JavaType type)
+    {
+        Set<String> javaTypeNumber = new HashSet<>(Arrays.asList(
+                Descriptors.FieldDescriptor.JavaType.FLOAT.name(),
+                Descriptors.FieldDescriptor.JavaType.DOUBLE.name()
+        ));
+
+        return javaTypeNumber.contains(type.name());
+    }
+
+    private boolean isLongType(Descriptors.FieldDescriptor.JavaType type)
+    {
+        Set<String> javaTypeNumber = new HashSet<>(Arrays.asList(
+                Descriptors.FieldDescriptor.JavaType.INT.name(),
+                Descriptors.FieldDescriptor.JavaType.LONG.name()
+        ));
+
+        return javaTypeNumber.contains(type.name());
     }
 }
