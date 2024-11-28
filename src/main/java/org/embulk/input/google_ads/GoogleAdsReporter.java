@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.ads.googleads.lib.GoogleAdsClient;
+import com.google.ads.googleads.v18.errors.GoogleAdsException;
 import com.google.ads.googleads.v18.resources.CustomerName;
 import com.google.ads.googleads.v18.services.CustomerServiceClient;
 import com.google.ads.googleads.v18.services.GoogleAdsRow;
@@ -15,6 +16,8 @@ import com.google.ads.googleads.v18.services.ListAccessibleCustomersRequest;
 import com.google.ads.googleads.v18.services.SearchGoogleAdsRequest;
 import com.google.ads.googleads.v18.services.SearchGoogleAdsStreamRequest;
 import com.google.ads.googleads.v18.services.SearchGoogleAdsStreamResponse;
+import com.google.api.gax.rpc.DeadlineExceededException;
+import com.google.api.gax.rpc.PermissionDeniedException;
 import com.google.auth.oauth2.UserCredentials;
 import com.google.common.base.CaseFormat;
 import com.google.protobuf.Descriptors;
@@ -29,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +68,7 @@ public class GoogleAdsReporter
         String query = buildQuery(task, params);
         logger.info(query);
         SearchGoogleAdsRequest request = buildRequest(task, query);
-        GoogleAdsServiceClient googleAdsService = client.getLatestVersion().createGoogleAdsServiceClient();
+        GoogleAdsServiceClient googleAdsService = client.getVersion18().createGoogleAdsServiceClient();
         GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
         return response.iteratePages();
     }
@@ -304,7 +308,7 @@ public class GoogleAdsReporter
 
     private List<Long> getLoginCustomerIds(String customerId)
     {
-        try (CustomerServiceClient client = buildClient(null).getLatestVersion().createCustomerServiceClient()) {
+        try (CustomerServiceClient client = buildClient(null).getVersion18().createCustomerServiceClient()) {
             return client.listAccessibleCustomers(ListAccessibleCustomersRequest.newBuilder().build())
                     .getResourceNamesList()
                     .stream()
@@ -315,6 +319,9 @@ public class GoogleAdsReporter
                     .filter(loginCustomerClient -> loginCustomerClient.customerClientId.equals(customerId))
                     .map(loginCustomerClient -> Long.valueOf(loginCustomerClient.loginCustomerId))
                     .collect(Collectors.toList());
+        } catch (GoogleAdsException | DeadlineExceededException | PermissionDeniedException e) {
+            logger.info("ignore invalid customer [customer id: {}]", customerId, e);
+            return Collections.emptyList();
         }
     }
 
@@ -331,6 +338,9 @@ public class GoogleAdsReporter
                     .map(GoogleAdsRow::getCustomerClient)
                     .map(customerClient -> new LoginCustomerClient(customerId, customerClient.getId()))
                     .collect(Collectors.toList());
+        } catch (GoogleAdsException | DeadlineExceededException | PermissionDeniedException e) {
+            logger.info("ignore invalid customer [customer id: {}]", customerId, e);
+            return Collections.emptyList();
         }
     }
 
