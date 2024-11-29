@@ -71,7 +71,7 @@ public class GoogleAdsReporter
         String query = buildQuery(task, params);
         logger.info(query);
         SearchGoogleAdsRequest request = buildRequest(task, query);
-        GoogleAdsServiceClient googleAdsService = client.getVersion18().createGoogleAdsServiceClient();
+        GoogleAdsServiceClient googleAdsService = client.getLatestVersion().createGoogleAdsServiceClient();
         GoogleAdsServiceClient.SearchPagedResponse response = googleAdsService.search(request);
         return response.iteratePages();
     }
@@ -344,7 +344,7 @@ public class GoogleAdsReporter
 
     private List<Long> getLoginCustomerIds(String customerId)
     {
-        try (CustomerServiceClient client = buildClient(null).getVersion18().createCustomerServiceClient()) {
+        try (CustomerServiceClient client = buildClient(null).getLatestVersion().createCustomerServiceClient()) {
             return client.listAccessibleCustomers(ListAccessibleCustomersRequest.newBuilder().build())
                     .getResourceNamesList()
                     .stream()
