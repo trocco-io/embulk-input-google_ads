@@ -21,7 +21,7 @@ import com.google.api.gax.rpc.PermissionDeniedException;
 import com.google.auth.oauth2.UserCredentials;
 import com.google.common.base.CaseFormat;
 import com.google.protobuf.Descriptors;
-import com.google.protobuf.GeneratedMessageV3;
+import com.google.protobuf.AbstractMessage;
 import com.google.protobuf.util.JsonFormat;
 
 import org.embulk.util.config.units.ColumnConfig;
@@ -109,8 +109,8 @@ public class GoogleAdsReporter
 
             if (isLeaf(attributeName)) {
                 result.put(attributeName, convertLeafNodeValue(fields, key));
-            } else if (fields.get(key) instanceof GeneratedMessageV3) {
-                GeneratedMessageV3 message = (GeneratedMessageV3) fields.get(key);
+            } else if (fields.get(key) instanceof AbstractMessage) {
+                AbstractMessage message = (AbstractMessage) fields.get(key);
                 flattenResource(attributeName, message.getAllFields(), result);
             }
         }
@@ -199,9 +199,9 @@ public class GoogleAdsReporter
     {
         if (key.isRepeated()) {
             ArrayNode result = mapper.createArrayNode();
-            List<GeneratedMessageV3> field = (List<GeneratedMessageV3>) fields.get(key);
+            List<AbstractMessage> field = (List<AbstractMessage>) fields.get(key);
             try {
-                for (GeneratedMessageV3 msg : field) {
+                for (AbstractMessage msg : field) {
                     JsonNode jsonNode = mapper.readTree(JsonFormat.printer().print(msg));
                     JsonNode jsonNodeWithSnakeCase = traverse(jsonNode);
                     result.add(jsonNodeWithSnakeCase);
@@ -213,7 +213,7 @@ public class GoogleAdsReporter
             }
         } else {
             try {
-                String jsonStr = JsonFormat.printer().print((GeneratedMessageV3) fields.get(key));
+                String jsonStr = JsonFormat.printer().print((AbstractMessage) fields.get(key));
                 JsonNode jsonNode = mapper.readTree(jsonStr);
                 JsonNode jsonNodeWithSnakeCase = traverse(jsonNode);
                 return mapper.writeValueAsString(jsonNodeWithSnakeCase);
