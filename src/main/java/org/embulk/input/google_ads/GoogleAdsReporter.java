@@ -20,8 +20,8 @@ import com.google.api.gax.rpc.DeadlineExceededException;
 import com.google.api.gax.rpc.PermissionDeniedException;
 import com.google.auth.oauth2.UserCredentials;
 import com.google.common.base.CaseFormat;
-import com.google.protobuf.Descriptors;
 import com.google.protobuf.AbstractMessage;
+import com.google.protobuf.Descriptors;
 import com.google.protobuf.util.JsonFormat;
 
 import org.embulk.util.config.units.ColumnConfig;
