@@ -76,29 +76,125 @@ public class GoogleAdsReporter
         return response.iteratePages();
     }
 
-    public void search(Consumer<GoogleAdsServiceClient.SearchPage> consumer, Map<String, String> params) {
-        GoogleAdsServiceClient.SearchPage lastPage = null;
-        for(GoogleAdsServiceClient.SearchPage page: search(params)) {
-            consumer.accept(page);
-            lastPage = page;
+    public void search(Consumer<GoogleAdsRow> consumer, Map<String, String> params) {
+        String resourceType = task.getResourceType();
+        if (!resourceType.equals("change_event") && !resourceType.equals("change_status")) {
+            for(GoogleAdsServiceClient.SearchPage page: search(params)) {
+                for (GoogleAdsRow row: page.getValues()) {
+                    consumer.accept(row);
+                }
+            }
+            return;
         }
 
-        String resourceType = task.getResourceType();
-        if (resourceType.equals("change_event") || resourceType.equals("change_status")) {
-            if (lastPage == null) return ;
-            GoogleAdsRow lastRow = null;
-            for (GoogleAdsRow row: lastPage.getValues()) {
-                lastRow = row;
+        // The date-time based pagination below re-queries with an inclusive lower bound (>=)
+        // on the last row's timestamp, so that rows sharing the same timestamp across the
+        // LIMIT boundary are not lost. Rows already emitted at that timestamp are skipped
+        // via their resource name.
+        ChangeResourcePagination pagination = new ChangeResourcePagination();
+        Map<String, String> currentParams = params;
+        while (true) {
+            pagination.startRound();
+            for(GoogleAdsServiceClient.SearchPage page: search(currentParams)) {
+                for (GoogleAdsRow row: page.getValues()) {
+                    if (pagination.shouldEmit(getChangeDateTime(row), getChangeResourceName(row))) {
+                        consumer.accept(row);
+                    }
+                }
             }
-            if (lastRow == null) return ;
 
-            Map<String, String> nextParams = new HashMap<>();
-            if (resourceType.equals("change_event")) {
-                nextParams.put("start_datetime", lastRow.getChangeEvent().getChangeDateTime());
-            } else {
-                nextParams.put("start_datetime", lastRow.getChangeStatus().getLastChangeDateTime());
+            if (pagination.isRoundEmpty()) {
+                return;
             }
-            search(consumer, nextParams);
+            if (!pagination.hasEmittedNewRow()) {
+                if (isRowCountAtLimit(pagination.getRowsReturned())) {
+                    logger.warn("no new rows beyond {}; more rows than LIMIT may share the same timestamp and cannot be fetched", pagination.getBoundaryDateTime());
+                }
+                return;
+            }
+            Map<String, String> nextParams = new HashMap<>();
+            nextParams.put("start_datetime", pagination.getBoundaryDateTime());
+            currentParams = nextParams;
+        }
+    }
+
+    private String getChangeDateTime(GoogleAdsRow row)
+    {
+        if (task.getResourceType().equals("change_event")) {
+            return row.getChangeEvent().getChangeDateTime();
+        } else {
+            return row.getChangeStatus().getLastChangeDateTime();
+        }
+    }
+
+    private String getChangeResourceName(GoogleAdsRow row)
+    {
+        if (task.getResourceType().equals("change_event")) {
+            return row.getChangeEvent().getResourceName();
+        } else {
+            return row.getChangeStatus().getResourceName();
+        }
+    }
+
+    private boolean isRowCountAtLimit(long rowsReturned)
+    {
+        if (!task.getLimit().isPresent()) {
+            return false;
+        }
+        try {
+            return rowsReturned >= Long.parseLong(task.getLimit().get());
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    static class ChangeResourcePagination
+    {
+        private String boundaryDateTime;
+        private final Set<String> emittedNamesAtBoundary = new HashSet<>();
+        private boolean emittedNewRow;
+        private long rowsReturned;
+
+        public void startRound()
+        {
+            emittedNewRow = false;
+            rowsReturned = 0;
+        }
+
+        public boolean shouldEmit(String dateTime, String resourceName)
+        {
+            rowsReturned++;
+            if (dateTime.equals(boundaryDateTime)) {
+                if (!emittedNamesAtBoundary.add(resourceName)) {
+                    return false;
+                }
+            } else {
+                boundaryDateTime = dateTime;
+                emittedNamesAtBoundary.clear();
+                emittedNamesAtBoundary.add(resourceName);
+            }
+            emittedNewRow = true;
+            return true;
+        }
+
+        public boolean isRoundEmpty()
+        {
+            return rowsReturned == 0;
+        }
+
+        public boolean hasEmittedNewRow()
+        {
+            return emittedNewRow;
+        }
+
+        public long getRowsReturned()
+        {
+            return rowsReturned;
+        }
+
+        public String getBoundaryDateTime()
+        {
+            return boundaryDateTime;
         }
     }
 
@@ -280,8 +376,17 @@ public class GoogleAdsReporter
         StringBuilder sb = new StringBuilder();
 
         sb.append("SELECT ");
-        String columns = task.getFields().getColumns().stream().map(ColumnConfig::getName).collect(Collectors.joining(", "));
-        sb.append(columns);
+        List<String> columns = task.getFields().getColumns().stream().map(ColumnConfig::getName).collect(Collectors.toList());
+        // Date-time based pagination reads these fields from each row, so make sure
+        // they are selected. Extra fields are not output (see isLeaf).
+        if (task.getResourceType().equals("change_event")) {
+            addIfMissing(columns, "change_event.change_date_time");
+            addIfMissing(columns, "change_event.resource_name");
+        } else if (task.getResourceType().equals("change_status")) {
+            addIfMissing(columns, "change_status.last_change_date_time");
+            addIfMissing(columns, "change_status.resource_name");
+        }
+        sb.append(String.join(", ", columns));
         sb.append(" FROM ");
         sb.append(task.getResourceType());
 
@@ -297,6 +402,13 @@ public class GoogleAdsReporter
         }
 
         return sb.toString();
+    }
+
+    private static void addIfMissing(List<String> columns, String column)
+    {
+        if (!columns.contains(column)) {
+            columns.add(column);
+        }
     }
 
     @VisibleForTesting
@@ -429,7 +541,9 @@ public class GoogleAdsReporter
             dateSb.append(" >= '");
             dateSb.append(task.getDateRange().get().getStartDate());
         } else {
-            dateSb.append(" > '");
+            // Inclusive so that rows sharing the boundary timestamp across the LIMIT
+            // boundary are re-fetched; already emitted rows are skipped by resource name.
+            dateSb.append(" >= '");
             dateSb.append(startDateTime);
         }
         dateSb.append("' AND ");

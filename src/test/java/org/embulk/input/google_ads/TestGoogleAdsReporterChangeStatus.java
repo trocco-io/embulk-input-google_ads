@@ -77,9 +77,60 @@ public class TestGoogleAdsReporterChangeStatus
         params.put("start_datetime", "2026-07-05 12:34:56");
         String query = reporter.buildQuery(task, params);
 
-        Assert.assertTrue(query.contains("change_status.last_change_date_time  > '2026-07-05 12:34:56'"));
-        Assert.assertFalse(query.contains(">= '2026-07-01 00:00:00'"));
+        // Inclusive lower bound: rows sharing the boundary timestamp are re-fetched
+        // and deduplicated by resource name, so they are not lost at the LIMIT boundary.
+        Assert.assertTrue(query.contains("change_status.last_change_date_time  >= '2026-07-05 12:34:56'"));
+        Assert.assertFalse(query.contains("'2026-07-01 00:00:00'"));
         Assert.assertTrue(query.contains("change_status.last_change_date_time  <= '2026-07-14 00:00:00'"));
+    }
+
+    @Test
+    public void testChangeStatusQuerySelectsPaginationFields()
+    {
+        PluginTask task = mockTask("change_status", DATE_RANGE);
+        GoogleAdsReporter reporter = new GoogleAdsReporter(task);
+
+        String query = reporter.buildQuery(task, new HashMap<>());
+
+        String select = query.substring(0, query.indexOf(" FROM "));
+        Assert.assertTrue(select.contains("change_status.last_change_date_time"));
+        Assert.assertTrue(select.contains("change_status.resource_name"));
+    }
+
+    @Test
+    public void testChangeEventQuerySelectsPaginationFields()
+    {
+        PluginTask task = mockTask("change_event", DATE_RANGE);
+        GoogleAdsReporter reporter = new GoogleAdsReporter(task);
+
+        String query = reporter.buildQuery(task, new HashMap<>());
+
+        String select = query.substring(0, query.indexOf(" FROM "));
+        Assert.assertTrue(select.contains("change_event.change_date_time"));
+        Assert.assertTrue(select.contains("change_event.resource_name"));
+    }
+
+    @Test
+    public void testPaginationFieldsAreNotDuplicatedInSelect()
+    {
+        PluginTask task = mockTask("change_status", DATE_RANGE, "change_status.last_change_date_time");
+        GoogleAdsReporter reporter = new GoogleAdsReporter(task);
+
+        String query = reporter.buildQuery(task, new HashMap<>());
+
+        String select = query.substring(0, query.indexOf(" FROM "));
+        Assert.assertEquals(1, countOccurrences(select, "change_status.last_change_date_time"));
+    }
+
+    private int countOccurrences(String haystack, String needle)
+    {
+        int count = 0;
+        int index = 0;
+        while ((index = haystack.indexOf(needle, index)) != -1) {
+            count++;
+            index += needle.length();
+        }
+        return count;
     }
 
     @Test

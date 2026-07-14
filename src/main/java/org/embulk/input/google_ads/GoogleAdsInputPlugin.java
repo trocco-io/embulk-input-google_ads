@@ -1,7 +1,5 @@
 package org.embulk.input.google_ads;
 
-import com.google.ads.googleads.v24.services.GoogleAdsRow;
-import com.google.ads.googleads.v24.services.GoogleAdsServiceClient;
 import com.google.common.collect.ImmutableList;
 
 import org.embulk.config.ConfigDiff;
@@ -75,14 +73,11 @@ public class GoogleAdsInputPlugin
             try (PageBuilder pageBuilder = getPageBuilder(schema, output)) {
                 Map<String, String> params = new HashMap<>();
                 reporter.search(
-                    searchPage -> {
-                        for (GoogleAdsRow row : searchPage.getValues()) {
-                            Map<String, String> result = new HashMap<>();
-                            reporter.flattenResource(null, row.getAllFields(), result);
-                            schema.visitColumns(new GoogleAdsColumnVisitor(new GoogleAdsAccessor(task, result), pageBuilder, task));
-                            pageBuilder.addRecord();
-                        }
-                        pageBuilder.flush();
+                    row -> {
+                        Map<String, String> result = new HashMap<>();
+                        reporter.flattenResource(null, row.getAllFields(), result);
+                        schema.visitColumns(new GoogleAdsColumnVisitor(new GoogleAdsAccessor(task, result), pageBuilder, task));
+                        pageBuilder.addRecord();
                     },
                     params
                 );
