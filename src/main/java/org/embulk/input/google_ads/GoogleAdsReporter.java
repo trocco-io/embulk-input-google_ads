@@ -112,6 +112,10 @@ public class GoogleAdsReporter
                 }
                 return;
             }
+            if (!isRowCountAtLimit(pagination.getRowsReturned())) {
+                // The result was not truncated by LIMIT, so there are no more rows to fetch.
+                return;
+            }
             Map<String, String> nextParams = new HashMap<>();
             nextParams.put("start_datetime", pagination.getBoundaryDateTime());
             currentParams = nextParams;
@@ -136,7 +140,8 @@ public class GoogleAdsReporter
         }
     }
 
-    private boolean isRowCountAtLimit(long rowsReturned)
+    @VisibleForTesting
+    public boolean isRowCountAtLimit(long rowsReturned)
     {
         if (!task.getLimit().isPresent()) {
             return false;

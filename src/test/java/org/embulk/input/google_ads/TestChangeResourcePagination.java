@@ -2,6 +2,9 @@ package org.embulk.input.google_ads;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
+
+import java.util.Optional;
 
 /**
  * Tests for the deduplicating date-time pagination used by change_event / change_status.
@@ -78,6 +81,27 @@ public class TestChangeResourcePagination
 
         Assert.assertTrue(pagination.isRoundEmpty());
         Assert.assertFalse(pagination.hasEmittedNewRow());
+    }
+
+    @Test
+    public void testIsRowCountAtLimit()
+    {
+        // A round returning fewer rows than LIMIT means the result was not truncated,
+        // so pagination stops without issuing an extra confirmation query.
+        Assert.assertFalse(reporterWithLimit(Optional.of("10000")).isRowCountAtLimit(9999));
+        Assert.assertTrue(reporterWithLimit(Optional.of("10000")).isRowCountAtLimit(10000));
+        Assert.assertFalse(reporterWithLimit(Optional.empty()).isRowCountAtLimit(10000));
+        Assert.assertFalse(reporterWithLimit(Optional.of("abc")).isRowCountAtLimit(10000));
+    }
+
+    private GoogleAdsReporter reporterWithLimit(Optional<String> limit)
+    {
+        PluginTask task = Mockito.mock(PluginTask.class);
+        Mockito.when(task.getClientId()).thenReturn("dummy");
+        Mockito.when(task.getClientSecret()).thenReturn("dummy");
+        Mockito.when(task.getRefreshToken()).thenReturn("dummy");
+        Mockito.when(task.getLimit()).thenReturn(limit);
+        return new GoogleAdsReporter(task);
     }
 
     @Test
