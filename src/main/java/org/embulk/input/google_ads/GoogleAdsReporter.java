@@ -83,7 +83,8 @@ public class GoogleAdsReporter
             lastPage = page;
         }
 
-        if (task.getResourceType().equals("change_event")) {
+        String resourceType = task.getResourceType();
+        if (resourceType.equals("change_event") || resourceType.equals("change_status")) {
             if (lastPage == null) return ;
             GoogleAdsRow lastRow = null;
             for (GoogleAdsRow row: lastPage.getValues()) {
@@ -92,7 +93,11 @@ public class GoogleAdsReporter
             if (lastRow == null) return ;
 
             Map<String, String> nextParams = new HashMap<>();
-            nextParams.put("start_datetime", lastRow.getChangeEvent().getChangeDateTime());
+            if (resourceType.equals("change_event")) {
+                nextParams.put("start_datetime", lastRow.getChangeEvent().getChangeDateTime());
+            } else {
+                nextParams.put("start_datetime", lastRow.getChangeStatus().getLastChangeDateTime());
+            }
             search(consumer, nextParams);
         }
     }
@@ -305,6 +310,8 @@ public class GoogleAdsReporter
             StringBuilder dateSb = new StringBuilder();
             if (task.getResourceType().equals("change_event")) {
                 dateSb.append(buildWhereClauseConditionsForChangeEvent(params.get("start_datetime")));
+            } else if (task.getResourceType().equals("change_status")) {
+                dateSb.append(buildWhereClauseConditionsForChangeStatus(params.get("start_datetime")));
             } else {
                 dateSb.append("segments.date BETWEEN '");
                 dateSb.append(task.getDateRange().get().getStartDate());
@@ -405,8 +412,19 @@ public class GoogleAdsReporter
 
     private String buildWhereClauseConditionsForChangeEvent(String startDateTime)
     {
+        return buildWhereClauseConditionsForDateTimeField("change_event.change_date_time", startDateTime);
+    }
+
+    private String buildWhereClauseConditionsForChangeStatus(String startDateTime)
+    {
+        return buildWhereClauseConditionsForDateTimeField("change_status.last_change_date_time", startDateTime);
+    }
+
+    private String buildWhereClauseConditionsForDateTimeField(String dateTimeField, String startDateTime)
+    {
         StringBuilder dateSb = new StringBuilder();
-        dateSb.append("change_event.change_date_time ");
+        dateSb.append(dateTimeField);
+        dateSb.append(" ");
         if (startDateTime == null) {
             dateSb.append(" >= '");
             dateSb.append(task.getDateRange().get().getStartDate());
@@ -415,11 +433,14 @@ public class GoogleAdsReporter
             dateSb.append(startDateTime);
         }
         dateSb.append("' AND ");
-        dateSb.append("change_event.change_date_time ");
+        dateSb.append(dateTimeField);
+        dateSb.append(" ");
         dateSb.append(" <= '");
         dateSb.append(task.getDateRange().get().getEndDate());
         dateSb.append("'");
-        dateSb.append(" ORDER BY change_event.change_date_time ASC");
+        dateSb.append(" ORDER BY ");
+        dateSb.append(dateTimeField);
+        dateSb.append(" ASC");
 
         return dateSb.toString();
     }
