@@ -67,7 +67,8 @@ public class GoogleAdsReporter
                 .build();
     }
 
-    private Iterable<GoogleAdsServiceClient.SearchPage> search(Map<String, String> params) {
+    @VisibleForTesting
+    Iterable<GoogleAdsServiceClient.SearchPage> search(Map<String, String> params) {
         String query = buildQuery(task, params);
         logger.info(query);
         SearchGoogleAdsRequest request = buildRequest(task, query);
@@ -108,7 +109,7 @@ public class GoogleAdsReporter
             }
             if (!pagination.hasEmittedNewRow()) {
                 if (isRowCountAtLimit(pagination.getRowsReturned())) {
-                    logger.warn("no new rows beyond {}; more rows than LIMIT may share the same timestamp and cannot be fetched", pagination.getBoundaryDateTime());
+                    logger.error("no new rows beyond {}; more rows than LIMIT share the same timestamp, so rows at and after this timestamp cannot be fetched. Consider raising LIMIT (max 10000).", pagination.getBoundaryDateTime());
                 }
                 return;
             }
