@@ -9,28 +9,18 @@ on:
     branches:
       - 'master'
     types: [opened, synchronize]
-  pull_request_target:
-    branches:
-      - 'master'
-    types: [labeled]
+
+# The test job needs no secrets and no write access. Fork PRs run under the
+# plain pull_request trigger, so pull_request_target is intentionally not used.
+permissions:
+  contents: read
 
 jobs:
   test:
     name: test
     runs-on: ubuntu-latest
-    if: >
-      ${{
-        github.event_name == 'workflow_dispatch' ||
-        github.event_name == 'push' ||
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'safe to test'))
-      }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          # pull_request_target checks out the base branch by default; test the
-          # labeled state of the fork PR instead. Other events keep the default ref.
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || '' }}
       - name: Set up JDK 1.8
         uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
         with:
